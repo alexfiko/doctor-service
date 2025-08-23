@@ -3,7 +3,7 @@ server:
 
 spring:
   profiles:
-    active: prod  # o "prod" en despliegue
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   application:
     name: doctor-service
   cloud:

@@ -53,18 +53,12 @@ spring:
     serialization:
       write-dates-as-timestamps: false
 
+# Deshabilitar Eureka en producción
 eureka:
   client:
-    serviceUrl:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://eureka-server:8761/eureka/}
-    healthcheck:
-      enabled: true
+    enabled: false
   instance:
-    preferIpAddress: true
-    hostname: doctor-service
-    instance-id: ${spring.application.name}:${spring.application.instance_id:${server.port}}
-    lease-renewal-interval-in-seconds: 10
-    lease-expiration-duration-in-seconds: 30
+    enabled: false
 
 logging:
   level:
