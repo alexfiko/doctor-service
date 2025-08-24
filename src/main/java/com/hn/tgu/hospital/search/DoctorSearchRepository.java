@@ -14,10 +14,6 @@ import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.search.sort.SortOrder;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
-import org.springframework.data.elasticsearch.core.SearchHits;
-import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
-import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
 import org.springframework.stereotype.Repository;
 
 import java.io.IOException;
@@ -30,9 +26,6 @@ public class DoctorSearchRepository {
 
     @Autowired
     private RestHighLevelClient elasticsearchClient;
-
-    @Autowired
-    private ElasticsearchOperations elasticsearchOperations;
 
     private static final String INDEX_NAME = "doctores";
 
@@ -285,13 +278,6 @@ public class DoctorSearchRepository {
             sourceBuilder.sort("_score", SortOrder.DESC);  // Ordenar por score de relevancia
             sourceBuilder.sort("rating", SortOrder.DESC);  // Luego por rating (descendente)
             
-            // Configurar highlighting para mostrar dónde coincidió la búsqueda
-            if (query != null && !query.trim().isEmpty()) {
-                sourceBuilder.highlighter(QueryBuilders.highlightQuery()
-                    .field("name").field("specialty").field("description")
-                    .preTags("<em>").postTags("</em>"));
-            }
-            
             request.source(sourceBuilder);
             
             System.out.println("🔍 [Elasticsearch 7.10] Query construida: " + boolQuery.toString());
@@ -332,7 +318,6 @@ public class DoctorSearchRepository {
                     .field("name", 3.0f)        // Nombre es 3x más importante
                     .field("specialty", 2.5f)   // Especialidad es 2.5x más importante
                     .field("description", 1.5f) // Descripción es 1.5x más importante
-                    .type(org.elasticsearch.index.query.MultiMatchQueryBuilder.Type.BEST_FIELDS)
                     .tieBreaker(0.3f);
                 
                 boolQuery.must(multiMatch);
