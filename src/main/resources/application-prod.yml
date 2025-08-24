@@ -54,11 +54,14 @@ spring:
       write-dates-as-timestamps: false
 
 # Deshabilitar Eureka en producción
+# Configuración de Eureka
 eureka:
   client:
-    enabled: false
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://eureka-server:8761/eureka/}
   instance:
-    enabled: false
+    prefer-ip-address: ${EUREKA_INSTANCE_PREFERIPADDRESS:true}
+    hostname: ${HOSTNAME:localhost}
 
 logging:
   level:
