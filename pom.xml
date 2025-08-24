@@ -84,20 +84,10 @@
 			<version>2.5.0</version>
 		</dependency>
 
-		<!-- Elasticsearch con versiones específicas -->
+		<!-- Elasticsearch con versiones específicas para Bonsai (7.10.2) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-elasticsearch</artifactId>
-			<exclusions>
-				<exclusion>
-					<groupId>co.elastic.clients</groupId>
-					<artifactId>elasticsearch-java</artifactId>
-				</exclusion>
-				<exclusion>
-					<groupId>org.elasticsearch.client</groupId>
-					<artifactId>elasticsearch-rest-client</artifactId>
-				</exclusion>
-			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>org.elasticsearch.client</groupId>

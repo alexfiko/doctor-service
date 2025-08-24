@@ -35,6 +35,14 @@ public class ElasticsearchClientConfig {
 
         // Parsear la URI
         URI uri = new URI(elasticsearchUris);
+        
+        // Para Bonsai, el puerto es 443 (HTTPS)
+        int port = uri.getPort() != -1 ? uri.getPort() : 443;
+        String scheme = uri.getScheme() != null ? uri.getScheme() : "https";
+
+        System.out.println("Host: " + uri.getHost());
+        System.out.println("Port: " + port);
+        System.out.println("Scheme: " + scheme);
 
         // Configurar credenciales
         BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
@@ -43,13 +51,17 @@ public class ElasticsearchClientConfig {
             new UsernamePasswordCredentials(username, password)
         );
 
-        // Crear el RestHighLevelClient directamente
+        // Crear el RestHighLevelClient para Bonsai
         RestHighLevelClient client = new RestHighLevelClient(
             RestClient.builder(
-                new HttpHost(uri.getHost(), uri.getPort(), uri.getScheme())
+                new HttpHost(uri.getHost(), port, scheme)
             )
             .setHttpClientConfigCallback(httpClientBuilder -> {
                 httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+                // Configurar SSL para Bonsai
+                if ("https".equals(scheme)) {
+                    httpClientBuilder.setSSLContext(org.apache.http.ssl.SSLContexts.createDefault());
+                }
                 return httpClientBuilder;
             })
         );

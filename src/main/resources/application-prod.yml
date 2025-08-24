@@ -31,15 +31,14 @@ spring:
       uris: ${SPRING_DATA_ELASTICSEARCH_URIS:https://hospital-cluster-5303791460.us-east-1.bonsaisearch.net:443}
       username: ${SPRING_DATA_ELASTICSEARCH_USERNAME:j78qu5rxgf}
       password: ${SPRING_DATA_ELASTICSEARCH_PASSWORD:c3y0l8bm9z}
-      connection-timeout: ${SPRING_DATA_ELASTICSEARCH_CONNECTION_TIMEOUT:30s}
-      socket-timeout: ${SPRING_DATA_ELASTICSEARCH_SOCKET_TIMEOUT:30s}
       ssl:
-        enabled: ${SPRING_DATA_ELASTICSEARCH_SSL_ENABLED:true}
-        verification-mode: ${SPRING_DATA_ELASTICSEARCH_SSL_VERIFICATION_MODE:none}
-      cluster-name: ${SPRING_DATA_ELASTICSEARCH_CLUSTER_NAME:elasticsearch}
+        enabled: true
+        verification-mode: none
+      # Configuración específica para Elasticsearch 7.x
+      cluster-name: elasticsearch
       index:
-        number-of-shards: ${SPRING_DATA_ELASTICSEARCH_INDEX_NUMBER_OF_SHARDS:1}
-        number-of-replicas: ${SPRING_DATA_ELASTICSEARCH_INDEX_NUMBER_OF_REPLICAS:0}
+        number-of-shards: 1
+        number-of-replicas: 0
       search:
         default-timeout: ${SPRING_DATA_ELASTICSEARCH_SEARCH_DEFAULT_TIMEOUT:30s}
         max-timeout: ${SPRING_DATA_ELASTICSEARCH_SEARCH_MAX_TIMEOUT:60s}
