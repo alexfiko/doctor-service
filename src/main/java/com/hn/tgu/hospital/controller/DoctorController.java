@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -327,4 +328,18 @@ public class DoctorController {
         .collect(Collectors.toList());
     return ResponseEntity.ok(doctores);
   }
+
+    @GetMapping("/hospitales")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<String>> getHospitales() {
+        try {
+            List<String> hospitales = doctorRepository.findDistinctHospitales();
+            return ResponseEntity.ok(hospitales);
+        } catch (Exception e) {
+            // Assuming logger is available, otherwise replace with System.err.println
+            // System.err.println("Error obteniendo hospitales: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.emptyList());
+        }
+    }
 }
