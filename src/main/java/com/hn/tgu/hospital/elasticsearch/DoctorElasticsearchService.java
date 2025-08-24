@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.query.Query;
 
 @Service
 public class DoctorElasticsearchService {
@@ -858,7 +859,7 @@ public class DoctorElasticsearchService {
     private boolean checkIfDoctorExists(String doctorId) {
         try {
             // Usar el template para buscar por ID
-            Optional<DoctorElasticsearch> existing = elasticsearchTemplate.findById(doctorId, DoctorElasticsearch.class);
+            Optional<DoctorElasticsearch> existing = elasticsearchTemplate.get(doctorId, DoctorElasticsearch.class);
             return existing.isPresent();
         } catch (Exception e) {
             // Si hay error, asumir que no existe
@@ -879,9 +880,17 @@ public class DoctorElasticsearchService {
             // Contar doctores en Elasticsearch usando el template
             long esCount = 0;
             try {
-                esCount = elasticsearchTemplate.count(DoctorElasticsearch.class);
+                // Crear query para contar todos
+                Query query = Query.findAll();
+                esCount = elasticsearchTemplate.count(query, DoctorElasticsearch.class);
             } catch (Exception e) {
                 System.err.println("⚠️ Error contando en Elasticsearch: " + e.getMessage());
+                // Fallback: usar método manual del repositorio
+                try {
+                    esCount = doctorElasticsearchRepository.countAllDoctors();
+                } catch (Exception e2) {
+                    System.err.println("⚠️ Fallback también falló: " + e2.getMessage());
+                }
             }
             
             // Calcular porcentaje de sincronización
