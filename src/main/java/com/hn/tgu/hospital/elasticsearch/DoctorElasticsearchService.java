@@ -516,4 +516,135 @@ public class DoctorElasticsearchService {
             throw new RuntimeException("Error en búsqueda avanzada con facets: " + e.getMessage(), e);
         }
     }
+    
+    /**
+     * Búsqueda por query con filtros avanzados
+     * Procesa queries como: hospital.term:"Centro Médico Integral"
+     */
+    public Map<String, Object> searchByQueryAdvanced(String query, String hospital, String specialty, 
+                                                    String experienceLevel, boolean available, 
+                                                    int page, int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            List<DoctorElasticsearch> results = new ArrayList<>();
+            
+            // Procesar query si existe
+            if (query != null && !query.trim().isEmpty()) {
+                results = processQueryString(query);
+            }
+            
+            // Aplicar filtros adicionales
+            if (hospital != null && !hospital.isEmpty()) {
+                if (results.isEmpty()) {
+                    results = doctorElasticsearchRepository.findByHospitalContaining(hospital);
+                } else {
+                    results = results.stream()
+                        .filter(d -> d.getHospital().toLowerCase().contains(hospital.toLowerCase()))
+                        .collect(Collectors.toList());
+                }
+            }
+            
+            if (specialty != null && !specialty.isEmpty()) {
+                if (results.isEmpty()) {
+                    results = doctorElasticsearchRepository.findBySpecialty(specialty);
+                } else {
+                    results = results.stream()
+                        .filter(d -> d.getSpecialty().equals(specialty))
+                        .collect(Collectors.toList());
+                }
+            }
+            
+            if (experienceLevel != null && !experienceLevel.isEmpty()) {
+                if (results.isEmpty()) {
+                    results = doctorElasticsearchRepository.findByExperienceLevel(experienceLevel);
+                } else {
+                    results = results.stream()
+                        .filter(d -> d.getExperienceLevel().equals(experienceLevel))
+                        .collect(Collectors.toList());
+                }
+            }
+            
+            if (available) {
+                if (results.isEmpty()) {
+                    results = doctorElasticsearchRepository.findByAvailable(true);
+                } else {
+                    results = results.stream()
+                        .filter(DoctorElasticsearch::isAvailable)
+                        .collect(Collectors.toList());
+                }
+            }
+            
+            // Aplicar paginación
+            int start = page * size;
+            int end = Math.min(start + size, results.size());
+            List<DoctorElasticsearch> paginatedResults = results.subList(start, end);
+            
+            // Obtener facets
+            Map<String, Long> experienceFacets = getExperienceFacets(hospital != null ? hospital : "");
+            Map<String, Long> specialtyFacets = getSpecialtyFacets(hospital != null ? hospital : "");
+            
+            // Construir respuesta
+            Map<String, Object> response = new HashMap<>();
+            response.put("doctors", paginatedResults);
+            response.put("totalElements", results.size());
+            response.put("totalPages", (int) Math.ceil((double) results.size() / size));
+            response.put("currentPage", page);
+            response.put("pageSize", size);
+            response.put("facets", Map.of(
+                "experienceLevel", experienceFacets,
+                "specialty", specialtyFacets
+            ));
+            response.put("filters", Map.of(
+                "query", query,
+                "hospital", hospital,
+                "specialty", specialty,
+                "experienceLevel", experienceLevel,
+                "available", available
+            ));
+            response.put("processedQuery", query);
+            
+            return response;
+            
+        } catch (Exception e) {
+            throw new RuntimeException("Error en búsqueda por query: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Procesar string de query para extraer filtros
+     * Ejemplo: hospital.term:"Centro Médico Integral" -> filtrar por hospital
+     */
+    private List<DoctorElasticsearch> processQueryString(String query) {
+        try {
+            // Patrón para queries como: field.term:"value"
+            if (query.contains(".term:")) {
+                String[] parts = query.split("\\.term:");
+                if (parts.length == 2) {
+                    String field = parts[0].trim();
+                    String value = parts[1].trim().replace("\"", "");
+                    
+                    switch (field.toLowerCase()) {
+                        case "hospital":
+                            return doctorElasticsearchRepository.findByHospitalContaining(value);
+                        case "specialty":
+                            return doctorElasticsearchRepository.findBySpecialty(value);
+                        case "experiencelevel":
+                            return doctorElasticsearchRepository.findByExperienceLevel(value);
+                        case "name":
+                            return doctorElasticsearchRepository.findBySearchTextContaining(value, PageRequest.of(0, 1000)).getContent();
+                        default:
+                            // Búsqueda general en searchText
+                            return doctorElasticsearchRepository.findBySearchTextContaining(value, PageRequest.of(0, 1000)).getContent();
+                    }
+                }
+            }
+            
+            // Si no es un patrón específico, hacer búsqueda general
+            return doctorElasticsearchRepository.findBySearchTextContaining(query, PageRequest.of(0, 1000)).getContent();
+            
+        } catch (Exception e) {
+            // En caso de error, retornar lista vacía
+            return new ArrayList<>();
+        }
+    }
 }

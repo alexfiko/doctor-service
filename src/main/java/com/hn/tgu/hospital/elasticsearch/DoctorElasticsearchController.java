@@ -399,6 +399,33 @@ public class DoctorElasticsearchController {
     }
     
     /**
+     * Búsqueda por query con filtros avanzados
+     * GET /api/elasticsearch/doctors/search/advanced?query=hospital.term:"Centro Médico Integral"
+     * GET /api/elasticsearch/doctors/search/advanced?query=specialty.term:"Cardiología"
+     * GET /api/elasticsearch/doctors/search/advanced?query=experienceLevel.term:"Experto"
+     */
+    @GetMapping("/search/advanced")
+    public ResponseEntity<Map<String, Object>> searchByQueryAdvanced(
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) String hospital,
+            @RequestParam(required = false) String specialty,
+            @RequestParam(required = false) String experienceLevel,
+            @RequestParam(defaultValue = "false") boolean available,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        try {
+            Map<String, Object> results = doctorElasticsearchService.searchByQueryAdvanced(
+                query, hospital, specialty, experienceLevel, available, page, size);
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error en búsqueda por query: " + e.getMessage());
+            errorResponse.put("status", "error");
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
+    
+    /**
      * Obtener todos los niveles de experiencia disponibles
      * GET /api/elasticsearch/doctors/experience-levels
      */
