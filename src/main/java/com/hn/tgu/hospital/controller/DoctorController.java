@@ -193,10 +193,25 @@ public class DoctorController {
     
     // Si tenemos parámetros individuales, usar el método original
     System.out.println("🔍 [DoctorController] Usando buscarConFacets con parámetros individuales");
+    System.out.println("🔍 [DoctorController] Parámetros recibidos:");
+    System.out.println("  - Query: " + query);
+    System.out.println("  - Specialty: " + specialty);
+    System.out.println("  - Hospital: " + hospital);
+    System.out.println("  - Available: " + available);
+    System.out.println("  - MinRating: " + minRating);
+    System.out.println("  - MaxRating: " + maxRating);
+    System.out.println("  - MinExperience: " + minExperience);
+    System.out.println("  - MaxExperience: " + maxExperience);
+    System.out.println("  - Tags: " + tags);
+    
     List<DoctorDTO> resultado = doctorSearchService.buscarConFacets(query, specialty, hospital, 
         minExperience, maxExperience, minRating, maxRating, available, tags);
     
     System.out.println("🔍 [DoctorController] Resultados devueltos: " + resultado.size());
+    System.out.println("🔍 [DoctorController] Primeros 3 resultados:");
+    resultado.stream().limit(3).forEach(doc -> 
+        System.out.println("  - " + doc.name + " (" + doc.hospital + ") - " + doc.specialty)
+    );
     
     return ResponseEntity.ok(resultado);
   }
