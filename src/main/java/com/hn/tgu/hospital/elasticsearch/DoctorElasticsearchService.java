@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -22,27 +23,7 @@ public class DoctorElasticsearchService {
     public Page<DoctorElasticsearch> searchByText(String query, int page, int size) {
         try {
             Pageable pageable = PageRequest.of(page, size);
-            return doctorElasticsearchRepository.searchByText(query, pageable);
-        } catch (Exception e) {
-            // Retornar página vacía en caso de error
-            Pageable pageable = PageRequest.of(page, size);
-            return Page.empty(pageable);
-        }
-    }
-    
-    /**
-     * Búsqueda avanzada
-     */
-    public Page<DoctorElasticsearch> searchAdvanced(String query, String specialty, String hospital, 
-                                                   int minExperience, int maxExperience, 
-                                                   double minRating, double maxRating, 
-                                                   boolean available, int page, int size) {
-        try {
-            Pageable pageable = PageRequest.of(page, size);
-            return doctorElasticsearchRepository.searchAdvanced(query, specialty, hospital, 
-                                                              minExperience, maxExperience, 
-                                                              minRating, maxRating, 
-                                                              available, pageable);
+            return doctorElasticsearchRepository.findBySearchTextContaining(query, pageable);
         } catch (Exception e) {
             // Retornar página vacía en caso de error
             Pageable pageable = PageRequest.of(page, size);
@@ -57,7 +38,7 @@ public class DoctorElasticsearchService {
         try {
             // Usar búsqueda con paginación
             Pageable pageable = PageRequest.of(0, 1000);
-            Page<DoctorElasticsearch> page = doctorElasticsearchRepository.searchByText("", pageable);
+            Page<DoctorElasticsearch> page = doctorElasticsearchRepository.findBySearchTextContaining("", pageable);
             
             Set<String> specialties = new HashSet<>();
             for (DoctorElasticsearch doctor : page.getContent()) {
@@ -78,7 +59,7 @@ public class DoctorElasticsearchService {
         try {
             // Usar búsqueda con paginación
             Pageable pageable = PageRequest.of(0, 1000);
-            Page<DoctorElasticsearch> page = doctorElasticsearchRepository.searchByText("", pageable);
+            Page<DoctorElasticsearch> page = doctorElasticsearchRepository.findBySearchTextContaining("", pageable);
             
             Set<String> hospitals = new HashSet<>();
             for (DoctorElasticsearch doctor : page.getContent()) {
@@ -99,7 +80,7 @@ public class DoctorElasticsearchService {
         try {
             // Usar búsqueda con paginación
             Pageable pageable = PageRequest.of(0, 1000);
-            Page<DoctorElasticsearch> page = doctorElasticsearchRepository.searchByText("", pageable);
+            Page<DoctorElasticsearch> page = doctorElasticsearchRepository.findBySearchTextContaining("", pageable);
             
             Set<String> allTags = new HashSet<>();
             for (DoctorElasticsearch doctor : page.getContent()) {
@@ -119,7 +100,7 @@ public class DoctorElasticsearchService {
     public Page<DoctorElasticsearch> findAll(int page, int size) {
         try {
             Pageable pageable = PageRequest.of(page, size);
-            return doctorElasticsearchRepository.searchByText("", pageable);
+            return doctorElasticsearchRepository.findBySearchTextContaining("", pageable);
         } catch (Exception e) {
             // Retornar página vacía en caso de error
             Pageable pageable = PageRequest.of(page, size);
@@ -167,9 +148,146 @@ public class DoctorElasticsearchService {
         } catch (Exception e) {
             Map<String, Object> errorResult = new HashMap<>();
             errorResult.put("error", "Error en búsqueda con facets: " + e.getMessage());
-            errorResult.put("doctors", new ArrayList<>());
-            errorResult.put("facets", new HashMap<>());
             return errorResult;
+        }
+    }
+    
+    /**
+     * Búsqueda avanzada con múltiples criterios
+     */
+    public Page<DoctorElasticsearch> searchAdvanced(String query, String specialty, String hospital, 
+                                                   Integer minExperience, Integer maxExperience, 
+                                                   Double minRating, Double maxRating, 
+                                                   Boolean available, int page, int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            
+            // Si hay query, usar búsqueda de texto
+            if (query != null && !query.trim().isEmpty()) {
+                return doctorElasticsearchRepository.findBySearchTextContaining(query, pageable);
+            }
+            
+            // Si no hay query, usar filtros específicos
+            List<DoctorElasticsearch> results = new ArrayList<>();
+            
+            // Aplicar filtros
+            if (specialty != null && !specialty.isEmpty()) {
+                results = doctorElasticsearchRepository.findBySpecialty(specialty);
+            }
+            
+            if (hospital != null && !hospital.isEmpty()) {
+                if (results.isEmpty()) {
+                    results = doctorElasticsearchRepository.findByHospitalContaining(hospital);
+                } else {
+                    results = results.stream()
+                        .filter(d -> d.getHospital().toLowerCase().contains(hospital.toLowerCase()))
+                        .collect(Collectors.toList());
+                }
+            }
+            
+            if (minExperience != null && maxExperience != null) {
+                if (results.isEmpty()) {
+                    results = doctorElasticsearchRepository.findByExperienceYearsBetween(minExperience, maxExperience);
+                } else {
+                    results = results.stream()
+                        .filter(d -> d.getExperienceYears() >= minExperience && d.getExperienceYears() <= maxExperience)
+                        .collect(Collectors.toList());
+                }
+            }
+            
+            if (minRating != null && maxRating != null) {
+                if (results.isEmpty()) {
+                    results = results.stream()
+                        .filter(d -> d.getRating() >= minRating && d.getRating() <= maxRating)
+                        .collect(Collectors.toList());
+                } else {
+                    results = results.stream()
+                        .filter(d -> d.getRating() >= minRating && d.getRating() <= maxRating)
+                        .collect(Collectors.toList());
+                }
+            }
+            
+            if (available != null) {
+                if (results.isEmpty()) {
+                    results = doctorElasticsearchRepository.findByAvailable(available);
+                } else {
+                    results = results.stream()
+                        .filter(d -> d.isAvailable() == available)
+                        .collect(Collectors.toList());
+                }
+            }
+            
+            // Aplicar paginación
+            int start = page * size;
+            int end = Math.min(start + size, results.size());
+            List<DoctorElasticsearch> paginatedResults = results.subList(start, end);
+            
+            // Crear página personalizada
+            return new PageImpl<>(paginatedResults, pageable, results.size());
+            
+        } catch (Exception e) {
+            // Retornar página vacía en caso de error
+            Pageable pageable = PageRequest.of(page, size);
+            return Page.empty(pageable);
+        }
+    }
+    
+    /**
+     * Métodos de búsqueda básicos usando Spring Data
+     */
+    public List<DoctorElasticsearch> findBySpecialty(String specialty) {
+        try {
+            return doctorElasticsearchRepository.findBySpecialty(specialty);
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+    
+    public List<DoctorElasticsearch> findByHospital(String hospital) {
+        try {
+            return doctorElasticsearchRepository.findByHospitalContaining(hospital);
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+    
+    public List<DoctorElasticsearch> findByAvailable(boolean available) {
+        try {
+            return doctorElasticsearchRepository.findByAvailable(available);
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+    
+    public List<DoctorElasticsearch> findByTagsIn(List<String> tags) {
+        try {
+            // Implementación manual ya que no existe findByTagsIn
+            List<DoctorElasticsearch> allDoctors = doctorElasticsearchRepository.findBySearchTextContaining("", PageRequest.of(0, 1000)).getContent();
+            return allDoctors.stream()
+                .filter(d -> d.getTags() != null && d.getTags().stream().anyMatch(tags::contains))
+                .collect(Collectors.toList());
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+    
+    public List<DoctorElasticsearch> findByExperienceYearsBetween(int minYears, int maxYears) {
+        try {
+            return doctorElasticsearchRepository.findByExperienceYearsBetween(minYears, maxYears);
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+    
+    public List<DoctorElasticsearch> findByRatingBetween(double minRating, double maxRating) {
+        try {
+            // Implementación manual ya que no existe findByRatingBetween
+            List<DoctorElasticsearch> allDoctors = doctorElasticsearchRepository.findBySearchTextContaining("", PageRequest.of(0, 1000)).getContent();
+            return allDoctors.stream()
+                .filter(d -> d.getRating() >= minRating && d.getRating() <= maxRating)
+                .collect(Collectors.toList());
+        } catch (Exception e) {
+            return new ArrayList<>();
         }
     }
     
@@ -207,57 +325,6 @@ public class DoctorElasticsearchService {
         }
     }
     
-    /**
-     * Métodos de búsqueda básicos usando Spring Data
-     */
-    public List<DoctorElasticsearch> findBySpecialty(String specialty) {
-        try {
-            return doctorElasticsearchRepository.findBySpecialty(specialty);
-        } catch (Exception e) {
-            return new ArrayList<>();
-        }
-    }
-    
-    public List<DoctorElasticsearch> findByHospital(String hospital) {
-        try {
-            return doctorElasticsearchRepository.findByHospital(hospital);
-        } catch (Exception e) {
-            return new ArrayList<>();
-        }
-    }
-    
-    public List<DoctorElasticsearch> findByAvailable(boolean available) {
-        try {
-            return doctorElasticsearchRepository.findByAvailable(available);
-        } catch (Exception e) {
-            return new ArrayList<>();
-        }
-    }
-    
-    public List<DoctorElasticsearch> findByTagsIn(List<String> tags) {
-        try {
-            return doctorElasticsearchRepository.findByTagsIn(tags);
-        } catch (Exception e) {
-            return new ArrayList<>();
-        }
-    }
-    
-    public List<DoctorElasticsearch> findByExperienceYearsBetween(int minYears, int maxYears) {
-        try {
-            return doctorElasticsearchRepository.findByExperienceYearsBetween(minYears, maxYears);
-        } catch (Exception e) {
-            return new ArrayList<>();
-        }
-    }
-    
-    public List<DoctorElasticsearch> findByRatingBetween(double minRating, double maxRating) {
-        try {
-            return doctorElasticsearchRepository.findByRatingBetween(minRating, maxRating);
-        } catch (Exception e) {
-            return new ArrayList<>();
-        }
-    }
-
     /**
      * Búsqueda full-text por hospital con facets de experiencia
      * Ejemplo de uso: hospital = "San José" retorna doctores con facets por nivel
