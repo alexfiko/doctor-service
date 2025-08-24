@@ -34,22 +34,7 @@ spring:
       ssl:
         enabled: true
         verification-mode: none
-  eureka:
-    client:
-      service-url:
-        defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://eureka-server:8761/eureka/}
-      register-with-eureka: true
-      fetch-registry: true
-    instance:
-      prefer-ip-address: true
-      instance-id: ${spring.application.name}:${server.port}
 
-  flyway:
-    enabled: false
-  jackson:
-    default-property-inclusion: non-null
-    serialization:
-      write-dates-as-timestamps: false
 
 logging:
   level:
