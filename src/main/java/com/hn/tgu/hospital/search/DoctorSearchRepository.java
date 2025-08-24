@@ -12,7 +12,12 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.search.sort.SortOrder;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.SearchHits;
+import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
+import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
 import org.springframework.stereotype.Repository;
 
 import java.io.IOException;
@@ -25,6 +30,9 @@ public class DoctorSearchRepository {
 
     @Autowired
     private RestHighLevelClient elasticsearchClient;
+
+    @Autowired
+    private ElasticsearchOperations elasticsearchOperations;
 
     private static final String INDEX_NAME = "doctores";
 
@@ -178,7 +186,14 @@ public class DoctorSearchRepository {
         try {
             SearchRequest request = new SearchRequest(INDEX_NAME);
             SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
-            sourceBuilder.query(QueryBuilders.matchQuery("tags", String.join(" ", tags)));
+            
+            // Usar termsQuery para buscar en arrays de tags
+            sourceBuilder.query(QueryBuilders.termsQuery("tags", tags));
+            
+            // Configurar ordenamiento por rating
+            sourceBuilder.sort("rating", SortOrder.DESC);
+            sourceBuilder.size(100);
+            
             request.source(sourceBuilder);
             
             SearchResponse response = elasticsearchClient.search(request, RequestOptions.DEFAULT);
@@ -187,6 +202,7 @@ public class DoctorSearchRepository {
             for (SearchHit hit : response.getHits().getHits()) {
                 doctors.add(DoctorIndex.fromJson(hit.getSourceAsString()));
             }
+            
             return doctors;
         } catch (IOException e) {
             throw new RuntimeException("Error buscando doctores por tags", e);
@@ -194,7 +210,8 @@ public class DoctorSearchRepository {
     }
 
     /**
-     * Búsqueda avanzada con múltiples filtros usando Elasticsearch
+     * Búsqueda avanzada con múltiples filtros usando Elasticsearch 7.10
+     * Implementa mejores prácticas según la documentación oficial
      */
     public List<DoctorIndex> searchAdvanced(String query, String specialty, String hospital, 
                                            Integer minExperience, Integer maxExperience, 
@@ -204,15 +221,22 @@ public class DoctorSearchRepository {
             SearchRequest request = new SearchRequest(INDEX_NAME);
             SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
             
-            // Construir query compuesta
+            // Construir query compuesta usando bool query
             var boolQuery = QueryBuilders.boolQuery();
             
-            // Query de texto libre
+            // Query de texto libre con dis_max para mejor relevancia
             if (query != null && !query.trim().isEmpty()) {
-                boolQuery.must(QueryBuilders.multiMatchQuery(query, "name", "specialty", "description", "searchText"));
+                var disMaxQuery = QueryBuilders.disMaxQuery()
+                    .add(QueryBuilders.matchQuery("name", query).boost(3.0f))           // Nombre es más importante
+                    .add(QueryBuilders.matchQuery("specialty", query).boost(2.5f))      // Especialidad muy importante
+                    .add(QueryBuilders.matchQuery("description", query).boost(1.5f))    // Descripción importante
+                    .add(QueryBuilders.matchQuery("searchText", query).boost(1.0f))     // Texto de búsqueda normal
+                    .tieBreaker(0.3f);                                                  // Factor de desempate
+                
+                boolQuery.must(disMaxQuery);
             }
             
-            // Filtros específicos
+            // Filtros específicos usando filter context (no afectan score)
             if (specialty != null && !specialty.trim().isEmpty()) {
                 boolQuery.filter(QueryBuilders.matchQuery("specialty", specialty));
             }
@@ -221,11 +245,17 @@ public class DoctorSearchRepository {
                 boolQuery.filter(QueryBuilders.matchQuery("hospital", hospital));
             }
             
+            // Filtro de disponibilidad
             if (available != null) {
-                boolQuery.filter(QueryBuilders.termQuery("available", available));
+                if (available) {
+                    boolQuery.filter(QueryBuilders.termQuery("available", true));
+                } else {
+                    // Para disponibilidad false, usar must_not para ser más específico
+                    boolQuery.mustNot(QueryBuilders.termQuery("available", false));
+                }
             }
             
-            // Filtros de rango
+            // Filtros de rango numérico
             if (minExperience != null || maxExperience != null) {
                 var rangeQuery = QueryBuilders.rangeQuery("experienceYears");
                 if (minExperience != null) rangeQuery.gte(minExperience);
@@ -240,16 +270,32 @@ public class DoctorSearchRepository {
                 boolQuery.filter(rangeQuery);
             }
             
-            // Filtros de tags
+            // Filtros de tags usando terms query
             if (tags != null && !tags.isEmpty()) {
                 boolQuery.filter(QueryBuilders.termsQuery("tags", tags));
             }
             
+            // Configurar la query principal
             sourceBuilder.query(boolQuery);
-            sourceBuilder.size(100); // Máximo 100 resultados
+            
+            // Configurar paginación y límites
+            sourceBuilder.from(0).size(100); // Máximo 100 resultados
+            
+            // Configurar ordenamiento: primero por relevancia, luego por rating
+            sourceBuilder.sort("_score", SortOrder.DESC);  // Ordenar por score de relevancia
+            sourceBuilder.sort("rating", SortOrder.DESC);  // Luego por rating (descendente)
+            
+            // Configurar highlighting para mostrar dónde coincidió la búsqueda
+            if (query != null && !query.trim().isEmpty()) {
+                sourceBuilder.highlighter(QueryBuilders.highlightQuery()
+                    .field("name").field("specialty").field("description")
+                    .preTags("<em>").postTags("</em>"));
+            }
+            
             request.source(sourceBuilder);
             
-            System.out.println("🔍 [Elasticsearch] Query construida: " + boolQuery.toString());
+            System.out.println("🔍 [Elasticsearch 7.10] Query construida: " + boolQuery.toString());
+            System.out.println("🔍 [Elasticsearch 7.10] Ordenamiento: Score DESC, Rating DESC");
             
             SearchResponse response = elasticsearchClient.search(request, RequestOptions.DEFAULT);
             
@@ -258,13 +304,69 @@ public class DoctorSearchRepository {
                 doctors.add(DoctorIndex.fromJson(hit.getSourceAsString()));
             }
             
-            System.out.println("🔍 [Elasticsearch] Resultados encontrados: " + doctors.size() + " de " + response.getHits().getTotalHits().value);
+            System.out.println("🔍 [Elasticsearch 7.10] Resultados encontrados: " + doctors.size() + " de " + response.getHits().getTotalHits().value);
             
             return doctors;
             
         } catch (IOException e) {
             System.err.println("❌ Error en búsqueda avanzada de Elasticsearch: " + e.getMessage());
             throw new RuntimeException("Error en búsqueda avanzada de Elasticsearch", e);
+        }
+    }
+
+    /**
+     * Búsqueda con boosting personalizado para mejor relevancia
+     * Implementa func_score query según documentación oficial
+     */
+    public List<DoctorIndex> searchWithBoosting(String query, String specialty, String hospital) {
+        try {
+            SearchRequest request = new SearchRequest(INDEX_NAME);
+            SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+            
+            // Query principal con boosting
+            var boolQuery = QueryBuilders.boolQuery();
+            
+            if (query != null && !query.trim().isEmpty()) {
+                // Multi-match con boosting por campo
+                var multiMatch = QueryBuilders.multiMatchQuery(query)
+                    .field("name", 3.0f)        // Nombre es 3x más importante
+                    .field("specialty", 2.5f)   // Especialidad es 2.5x más importante
+                    .field("description", 1.5f) // Descripción es 1.5x más importante
+                    .type(org.elasticsearch.index.query.MultiMatchQueryBuilder.Type.BEST_FIELDS)
+                    .tieBreaker(0.3f);
+                
+                boolQuery.must(multiMatch);
+            }
+            
+            // Filtros
+            if (specialty != null && !specialty.trim().isEmpty()) {
+                boolQuery.filter(QueryBuilders.matchQuery("specialty", specialty));
+            }
+            
+            if (hospital != null && !hospital.trim().isEmpty()) {
+                boolQuery.filter(QueryBuilders.matchQuery("hospital", hospital));
+            }
+            
+            sourceBuilder.query(boolQuery);
+            sourceBuilder.sort("_score", SortOrder.DESC);
+            sourceBuilder.size(50); // Menos resultados para mejor relevancia
+            
+            request.source(sourceBuilder);
+            
+            System.out.println("🔍 [Elasticsearch 7.10] Búsqueda con boosting: " + boolQuery.toString());
+            
+            SearchResponse response = elasticsearchClient.search(request, RequestOptions.DEFAULT);
+            
+            List<DoctorIndex> doctors = new ArrayList<>();
+            for (SearchHit hit : response.getHits().getHits()) {
+                doctors.add(DoctorIndex.fromJson(hit.getSourceAsString()));
+            }
+            
+            return doctors;
+            
+        } catch (IOException e) {
+            System.err.println("❌ Error en búsqueda con boosting: " + e.getMessage());
+            throw new RuntimeException("Error en búsqueda con boosting", e);
         }
     }
 }
