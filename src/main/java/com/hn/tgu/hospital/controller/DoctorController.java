@@ -273,6 +273,18 @@ public class DoctorController {
     }
   }
 
+  // GET - Sincronizar datos con Elasticsearch (alternativa)
+  @GetMapping("/sync/elasticsearch")
+  public ResponseEntity<String> sincronizarConElasticsearchGet() {
+    try {
+      doctorSearchService.sincronizarDatos();
+      return ResponseEntity.ok("Datos sincronizados exitosamente con Elasticsearch");
+    } catch (Exception e) {
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                         .body("Error al sincronizar datos: " + e.getMessage());
+    }
+  }
+
   // GET - Verificar estado de Elasticsearch
   @GetMapping("/search-index")
   public ResponseEntity<List<DoctorDTO>> verificarElasticsearch() {
