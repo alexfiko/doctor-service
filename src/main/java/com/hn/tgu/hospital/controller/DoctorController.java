@@ -168,8 +168,36 @@ public class DoctorController {
       @RequestParam(required = false) Integer maxExperience,
       @RequestParam(required = false) List<String> tags) {
     
+    System.out.println("🔍 [DoctorController] /search/advanced llamado con:");
+    System.out.println("  - Query: " + query);
+    System.out.println("  - Specialty: " + specialty);
+    System.out.println("  - Hospital: " + hospital);
+    System.out.println("  - Available: " + available);
+    System.out.println("  - MinRating: " + minRating);
+    System.out.println("  - MaxRating: " + maxRating);
+    System.out.println("  - MinExperience: " + minExperience);
+    System.out.println("  - MaxExperience: " + maxExperience);
+    System.out.println("  - Tags: " + tags);
+    
+    // Si solo tenemos query (del frontend), usar el nuevo método
+    if (query != null && !query.trim().isEmpty() && 
+        specialty == null && hospital == null && available == null && 
+        minRating == null && maxRating == null && minExperience == null && 
+        maxExperience == null && (tags == null || tags.isEmpty())) {
+      
+      System.out.println("🔍 [DoctorController] Usando procesarQueryFrontend para query: " + query);
+      List<DoctorDTO> resultado = doctorSearchService.procesarQueryFrontend(query);
+      System.out.println("🔍 [DoctorController] Resultados devueltos: " + resultado.size());
+      return ResponseEntity.ok(resultado);
+    }
+    
+    // Si tenemos parámetros individuales, usar el método original
+    System.out.println("🔍 [DoctorController] Usando buscarConFacets con parámetros individuales");
     List<DoctorDTO> resultado = doctorSearchService.buscarConFacets(query, specialty, hospital, 
         minExperience, maxExperience, minRating, maxRating, available, tags);
+    
+    System.out.println("🔍 [DoctorController] Resultados devueltos: " + resultado.size());
+    
     return ResponseEntity.ok(resultado);
   }
 

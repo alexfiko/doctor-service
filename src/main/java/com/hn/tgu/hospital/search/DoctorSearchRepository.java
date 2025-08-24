@@ -192,4 +192,79 @@ public class DoctorSearchRepository {
             throw new RuntimeException("Error buscando doctores por tags", e);
         }
     }
+
+    /**
+     * Búsqueda avanzada con múltiples filtros usando Elasticsearch
+     */
+    public List<DoctorIndex> searchAdvanced(String query, String specialty, String hospital, 
+                                           Integer minExperience, Integer maxExperience, 
+                                           Double minRating, Double maxRating, 
+                                           Boolean available, List<String> tags) {
+        try {
+            SearchRequest request = new SearchRequest(INDEX_NAME);
+            SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+            
+            // Construir query compuesta
+            var boolQuery = QueryBuilders.boolQuery();
+            
+            // Query de texto libre
+            if (query != null && !query.trim().isEmpty()) {
+                boolQuery.must(QueryBuilders.multiMatchQuery(query, "name", "specialty", "description", "searchText"));
+            }
+            
+            // Filtros específicos
+            if (specialty != null && !specialty.trim().isEmpty()) {
+                boolQuery.filter(QueryBuilders.matchQuery("specialty", specialty));
+            }
+            
+            if (hospital != null && !hospital.trim().isEmpty()) {
+                boolQuery.filter(QueryBuilders.matchQuery("hospital", hospital));
+            }
+            
+            if (available != null) {
+                boolQuery.filter(QueryBuilders.termQuery("available", available));
+            }
+            
+            // Filtros de rango
+            if (minExperience != null || maxExperience != null) {
+                var rangeQuery = QueryBuilders.rangeQuery("experienceYears");
+                if (minExperience != null) rangeQuery.gte(minExperience);
+                if (maxExperience != null) rangeQuery.lte(maxExperience);
+                boolQuery.filter(rangeQuery);
+            }
+            
+            if (minRating != null || maxRating != null) {
+                var rangeQuery = QueryBuilders.rangeQuery("rating");
+                if (minRating != null) rangeQuery.gte(minRating);
+                if (maxRating != null) rangeQuery.lte(maxRating);
+                boolQuery.filter(rangeQuery);
+            }
+            
+            // Filtros de tags
+            if (tags != null && !tags.isEmpty()) {
+                boolQuery.filter(QueryBuilders.termsQuery("tags", tags));
+            }
+            
+            sourceBuilder.query(boolQuery);
+            sourceBuilder.size(100); // Máximo 100 resultados
+            request.source(sourceBuilder);
+            
+            System.out.println("🔍 [Elasticsearch] Query construida: " + boolQuery.toString());
+            
+            SearchResponse response = elasticsearchClient.search(request, RequestOptions.DEFAULT);
+            
+            List<DoctorIndex> doctors = new ArrayList<>();
+            for (SearchHit hit : response.getHits().getHits()) {
+                doctors.add(DoctorIndex.fromJson(hit.getSourceAsString()));
+            }
+            
+            System.out.println("🔍 [Elasticsearch] Resultados encontrados: " + doctors.size() + " de " + response.getHits().getTotalHits().value);
+            
+            return doctors;
+            
+        } catch (IOException e) {
+            System.err.println("❌ Error en búsqueda avanzada de Elasticsearch: " + e.getMessage());
+            throw new RuntimeException("Error en búsqueda avanzada de Elasticsearch", e);
+        }
+    }
 }
