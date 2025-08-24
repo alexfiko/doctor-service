@@ -11,6 +11,14 @@ import java.util.List;
 @Repository
 public interface DoctorElasticsearchRepository extends ElasticsearchRepository<DoctorElasticsearch, String> {
 
+    // Métodos básicos heredados de ElasticsearchRepository
+    // Estos métodos ya están disponibles automáticamente:
+    // - save(DoctorElasticsearch entity)
+    // - count()
+    // - findAll()
+    // - findById(String id)
+    // - deleteById(String id)
+
     // Búsqueda básica por texto
     List<DoctorElasticsearch> findBySearchTextContaining(String searchText);
     
