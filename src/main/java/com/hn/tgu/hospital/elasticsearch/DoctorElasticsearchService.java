@@ -759,4 +759,151 @@ public class DoctorElasticsearchService {
             return new HashMap<>();
         }
     }
+    
+    /**
+     * Sincronización inteligente desde la base de datos
+     * Verifica si ya existe antes de crear
+     */
+    public Map<String, Object> syncFromDatabase() {
+        try {
+            Map<String, Object> response = new HashMap<>();
+            
+            // Obtener todos los doctores de la base de datos
+            List<Doctor> doctorsFromDB = doctorRepository.findAll();
+            
+            if (doctorsFromDB.isEmpty()) {
+                response.put("message", "No hay doctores en la base de datos para sincronizar");
+                response.put("syncedCount", 0);
+                response.put("skippedCount", 0);
+                response.put("status", "warning");
+                return response;
+            }
+            
+            int syncedCount = 0;
+            int skippedCount = 0;
+            List<String> syncedIds = new ArrayList<>();
+            List<String> skippedIds = new ArrayList<>();
+            List<String> errorIds = new ArrayList<>();
+            
+            for (Doctor doctor : doctorsFromDB) {
+                try {
+                    // Verificar si ya existe en Elasticsearch
+                    boolean exists = checkIfDoctorExists(doctor.getId());
+                    
+                    if (exists) {
+                        // Ya existe, saltar al siguiente
+                        skippedCount++;
+                        skippedIds.add(doctor.getId());
+                        System.out.println("⏭️ Doctor ya existe, saltando: " + doctor.getName() + " (ID: " + doctor.getId() + ")");
+                        continue;
+                    }
+                    
+                    // Convertir a formato Elasticsearch
+                    DoctorElasticsearch doctorES = new DoctorElasticsearch(
+                        doctor.getId(), doctor.getName(), doctor.getSpecialty(), doctor.getImg(),
+                        doctor.getExperienceYears(), doctor.getRating(), doctor.getHospital(),
+                        doctor.isAvailable(), doctor.getDescription(), doctor.getTags(),
+                        doctor.getDiasLaborales(), doctor.getHorarioEntrada(), doctor.getHorarioSalida(),
+                        doctor.getDuracionCita(), doctor.getHorariosDisponibles()
+                    );
+                    
+                    // Intentar guardar usando el template
+                    try {
+                        // Usar ElasticsearchRestTemplate directamente
+                        elasticsearchTemplate.save(doctorES);
+                        syncedCount++;
+                        syncedIds.add(doctor.getId());
+                        System.out.println("✅ Doctor sincronizado: " + doctor.getName() + " (ID: " + doctor.getId() + ")");
+                    } catch (Exception e) {
+                        System.err.println("❌ Error guardando doctor " + doctor.getId() + ": " + e.getMessage());
+                        errorIds.add(doctor.getId());
+                    }
+                    
+                } catch (Exception e) {
+                    System.err.println("❌ Error procesando doctor " + doctor.getId() + ": " + e.getMessage());
+                    errorIds.add(doctor.getId());
+                }
+            }
+            
+            response.put("message", "Sincronización completada");
+            response.put("totalDoctors", doctorsFromDB.size());
+            response.put("syncedCount", syncedCount);
+            response.put("skippedCount", skippedCount);
+            response.put("errorCount", errorIds.size());
+            response.put("syncedIds", syncedIds);
+            response.put("skippedIds", skippedIds);
+            response.put("errorIds", errorIds);
+            response.put("timestamp", System.currentTimeMillis());
+            response.put("status", "success");
+            
+            System.out.println("🎉 Sincronización completada: " + syncedCount + " nuevos, " + skippedCount + " existentes, " + errorIds.size() + " errores");
+            return response;
+            
+        } catch (Exception e) {
+            System.err.println("❌ Error en sincronización: " + e.getMessage());
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error en sincronización: " + e.getMessage());
+            errorResponse.put("status", "error");
+            return errorResponse;
+        }
+    }
+    
+    /**
+     * Verificar si un doctor ya existe en Elasticsearch
+     */
+    private boolean checkIfDoctorExists(String doctorId) {
+        try {
+            // Usar el template para buscar por ID
+            Optional<DoctorElasticsearch> existing = elasticsearchTemplate.findById(doctorId, DoctorElasticsearch.class);
+            return existing.isPresent();
+        } catch (Exception e) {
+            // Si hay error, asumir que no existe
+            return false;
+        }
+    }
+    
+    /**
+     * Obtener estado de sincronización
+     */
+    public Map<String, Object> getSyncStatus() {
+        try {
+            Map<String, Object> response = new HashMap<>();
+            
+            // Contar doctores en la base de datos
+            long dbCount = doctorRepository.count();
+            
+            // Contar doctores en Elasticsearch usando el template
+            long esCount = 0;
+            try {
+                esCount = elasticsearchTemplate.count(DoctorElasticsearch.class);
+            } catch (Exception e) {
+                System.err.println("⚠️ Error contando en Elasticsearch: " + e.getMessage());
+            }
+            
+            // Calcular porcentaje de sincronización
+            double syncPercentage = dbCount > 0 ? (esCount * 100.0 / dbCount) : 0;
+            
+            response.put("databaseCount", dbCount);
+            response.put("elasticsearchCount", esCount);
+            response.put("syncPercentage", Math.round(syncPercentage * 100.0) / 100.0);
+            response.put("status", "success");
+            
+            if (syncPercentage == 100) {
+                response.put("message", "Sincronización completa");
+            } else if (syncPercentage > 0) {
+                response.put("message", "Sincronización parcial");
+            } else {
+                response.put("message", "Sin sincronización");
+            }
+            
+            return response;
+            
+        } catch (Exception e) {
+            System.err.println("❌ Error obteniendo estado de sincronización: " + e.getMessage());
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error obteniendo estado de sincronización: " + e.getMessage());
+            errorResponse.put("status", "error");
+            return errorResponse;
+        }
+    }
 }

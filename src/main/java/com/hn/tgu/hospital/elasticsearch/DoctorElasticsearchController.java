@@ -486,4 +486,38 @@ public class DoctorElasticsearchController {
             return ResponseEntity.internalServerError().body(errorResponse);
         }
     }
+    
+    /**
+     * Sincronizar desde la base de datos (inteligente)
+     * POST /doctors/elasticsearch/sync
+     */
+    @PostMapping("/sync")
+    public ResponseEntity<Map<String, Object>> syncFromDatabase() {
+        try {
+            Map<String, Object> result = doctorElasticsearchService.syncFromDatabase();
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error en sincronización: " + e.getMessage());
+            errorResponse.put("status", "error");
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
+    
+    /**
+     * Verificar estado de sincronización
+     * GET /doctors/elasticsearch/sync-status
+     */
+    @GetMapping("/sync-status")
+    public ResponseEntity<Map<String, Object>> getSyncStatus() {
+        try {
+            Map<String, Object> result = doctorElasticsearchService.getSyncStatus();
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error obteniendo estado de sincronización: " + e.getMessage());
+            errorResponse.put("status", "error");
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
 }
