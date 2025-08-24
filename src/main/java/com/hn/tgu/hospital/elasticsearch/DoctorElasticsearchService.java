@@ -647,4 +647,146 @@ public class DoctorElasticsearchService {
             return new ArrayList<>();
         }
     }
+    
+    /**
+     * BÚSQUEDA EXACTA - Como WHERE field = "valor"
+     * Resuelve el problema de espacios y búsqueda parcial
+     */
+    public Map<String, Object> searchExact(String field, String value, int page, int size) {
+        try {
+            List<DoctorElasticsearch> results = new ArrayList<>();
+            
+            // Búsqueda exacta según el campo
+            switch (field.toLowerCase()) {
+                case "hospital":
+                    results = doctorElasticsearchRepository.searchByHospitalExact(value);
+                    break;
+                case "specialty":
+                    results = doctorElasticsearchRepository.searchBySpecialtyExact(value);
+                    break;
+                case "experiencelevel":
+                    results = doctorElasticsearchRepository.searchByExperienceLevelExact(value);
+                    break;
+                case "name":
+                    results = doctorElasticsearchRepository.searchByNameExact(value);
+                    break;
+                default:
+                    throw new IllegalArgumentException("Campo no soportado: " + field);
+            }
+            
+            // Aplicar paginación
+            int start = page * size;
+            int end = Math.min(start + size, results.size());
+            List<DoctorElasticsearch> paginatedResults = results.subList(start, end);
+            
+            // Obtener facets
+            Map<String, Long> experienceFacets = getExperienceFacetsExact(field, value);
+            Map<String, Long> specialtyFacets = getSpecialtyFacetsExact(field, value);
+            
+            // Construir respuesta
+            Map<String, Object> response = new HashMap<>();
+            response.put("doctors", paginatedResults);
+            response.put("totalElements", results.size());
+            response.put("totalPages", (int) Math.ceil((double) results.size() / size));
+            response.put("currentPage", page);
+            response.put("pageSize", size);
+            response.put("facets", Map.of(
+                "experienceLevel", experienceFacets,
+                "specialty", specialtyFacets
+            ));
+            response.put("search", Map.of(
+                "field", field,
+                "value", value,
+                "type", "exact"
+            ));
+            
+            return response;
+            
+        } catch (Exception e) {
+            throw new RuntimeException("Error en búsqueda exacta: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Búsqueda exacta por hospital (WHERE hospital = "valor")
+     */
+    public Map<String, Object> searchByHospitalExact(String hospital, int page, int size) {
+        return searchExact("hospital", hospital, page, size);
+    }
+    
+    /**
+     * Búsqueda exacta por especialidad (WHERE specialty = "valor")
+     */
+    public Map<String, Object> searchBySpecialtyExact(String specialty, int page, int size) {
+        return searchExact("specialty", specialty, page, size);
+    }
+    
+    /**
+     * Búsqueda exacta por nivel de experiencia (WHERE experienceLevel = "valor")
+     */
+    public Map<String, Object> searchByExperienceLevelExact(String experienceLevel, int page, int size) {
+        return searchExact("experiencelevel", experienceLevel, page, size);
+    }
+    
+    /**
+     * Obtener facets de experiencia para búsqueda exacta
+     */
+    private Map<String, Long> getExperienceFacetsExact(String field, String value) {
+        try {
+            List<DoctorElasticsearch> doctors = new ArrayList<>();
+            
+            switch (field.toLowerCase()) {
+                case "hospital":
+                    doctors = doctorElasticsearchRepository.searchByHospitalExact(value);
+                    break;
+                case "specialty":
+                    doctors = doctorElasticsearchRepository.searchBySpecialtyExact(value);
+                    break;
+                case "experiencelevel":
+                    doctors = doctorElasticsearchRepository.searchByExperienceLevelExact(value);
+                    break;
+                default:
+                    return new HashMap<>();
+            }
+            
+            return doctors.stream()
+                .collect(Collectors.groupingBy(
+                    DoctorElasticsearch::getExperienceLevel,
+                    Collectors.counting()
+                ));
+        } catch (Exception e) {
+            return new HashMap<>();
+        }
+    }
+    
+    /**
+     * Obtener facets de especialidad para búsqueda exacta
+     */
+    private Map<String, Long> getSpecialtyFacetsExact(String field, String value) {
+        try {
+            List<DoctorElasticsearch> doctors = new ArrayList<>();
+            
+            switch (field.toLowerCase()) {
+                case "hospital":
+                    doctors = doctorElasticsearchRepository.searchByHospitalExact(value);
+                    break;
+                case "specialty":
+                    doctors = doctorElasticsearchRepository.searchBySpecialtyExact(value);
+                    break;
+                case "experiencelevel":
+                    doctors = doctorElasticsearchRepository.searchByExperienceLevelExact(value);
+                    break;
+                default:
+                    return new HashMap<>();
+            }
+            
+            return doctors.stream()
+                .collect(Collectors.groupingBy(
+                    DoctorElasticsearch::getSpecialty,
+                    Collectors.counting()
+                ));
+        } catch (Exception e) {
+            return new HashMap<>();
+        }
+    }
 }

@@ -426,6 +426,88 @@ public class DoctorElasticsearchController {
     }
     
     /**
+     * BÚSQUEDA EXACTA con Facets por Rango
+     * GET /api/elasticsearch/doctors/exact?field=hospital&value=Centro Médico Integral&page=0&size=10
+     * GET /api/elasticsearch/doctors/exact?field=specialty&value=Cardiología&page=0&size=10
+     * GET /api/elasticsearch/doctors/exact?field=experienceLevel&value=Experto&page=0&size=10
+     */
+    @GetMapping("/exact")
+    public ResponseEntity<Map<String, Object>> searchExact(
+            @RequestParam String field,
+            @RequestParam String value,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        try {
+            Map<String, Object> results = doctorElasticsearchService.searchExact(field, value, page, size);
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error en búsqueda exacta: " + e.getMessage());
+            errorResponse.put("status", "error");
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
+    
+    /**
+     * Búsqueda exacta por hospital con facets por rango
+     * GET /api/elasticsearch/doctors/exact/hospital?value=Centro Médico Integral&page=0&size=10
+     */
+    @GetMapping("/exact/hospital")
+    public ResponseEntity<Map<String, Object>> searchExactByHospital(
+            @RequestParam String value,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        try {
+            Map<String, Object> results = doctorElasticsearchService.searchByHospitalExact(value, page, size);
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error en búsqueda exacta por hospital: " + e.getMessage());
+            errorResponse.put("status", "error");
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
+    
+    /**
+     * Búsqueda exacta por especialidad con facets por rango
+     * GET /api/elasticsearch/doctors/exact/specialty?value=Cardiología&page=0&size=10
+     */
+    @GetMapping("/exact/specialty")
+    public ResponseEntity<Map<String, Object>> searchExactBySpecialty(
+            @RequestParam String value,
+            @RequestParam(defaultValue = "0") int size) {
+        try {
+            Map<String, Object> results = doctorElasticsearchService.searchBySpecialtyExact(value, 0, size);
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error en búsqueda exacta por especialidad: " + e.getMessage());
+            errorResponse.put("status", "error");
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
+    
+    /**
+     * Búsqueda exacta por nivel de experiencia con facets por rango
+     * GET /api/elasticsearch/doctors/exact/experience?value=Experto&page=0&size=10
+     */
+    @GetMapping("/exact/experience")
+    public ResponseEntity<Map<String, Object>> searchExactByExperience(
+            @RequestParam String value,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        try {
+            Map<String, Object> results = doctorElasticsearchService.searchByExperienceLevelExact(value, page, size);
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error en búsqueda exacta por experiencia: " + e.getMessage());
+            errorResponse.put("status", "error");
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
+    
+    /**
      * Obtener todos los niveles de experiencia disponibles
      * GET /api/elasticsearch/doctors/experience-levels
      */

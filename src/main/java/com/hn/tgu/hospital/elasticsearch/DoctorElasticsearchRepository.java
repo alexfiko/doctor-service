@@ -17,9 +17,6 @@ public interface DoctorElasticsearchRepository extends ElasticsearchRepository<D
     // Búsqueda por especialidad
     List<DoctorElasticsearch> findBySpecialty(String specialty);
     
-    // Búsqueda por hospital (exacta)
-    List<DoctorElasticsearch> findByHospitalKeyword(String hospital);
-    
     // Búsqueda por hospital (full-text)
     List<DoctorElasticsearch> findByHospitalContaining(String hospital);
     
@@ -68,4 +65,17 @@ public interface DoctorElasticsearchRepository extends ElasticsearchRepository<D
     // Query personalizada para búsqueda con wildcards
     @Query("{\"wildcard\": {\"hospital\": {\"value\": \"*?0*\"}}}")
     List<DoctorElasticsearch> searchByHospitalWildcard(String hospital);
+    
+    // BÚSQUEDA EXACTA - Como WHERE field = "valor"
+    @Query("{\"term\": {\"hospitalKeyword\": \"?0\"}}")
+    List<DoctorElasticsearch> searchByHospitalExact(String hospital);
+    
+    @Query("{\"term\": {\"specialty\": \"?0\"}}")
+    List<DoctorElasticsearch> searchBySpecialtyExact(String specialty);
+    
+    @Query("{\"term\": {\"experienceLevel\": \"?0\"}}")
+    List<DoctorElasticsearch> searchByExperienceLevelExact(String experienceLevel);
+    
+    @Query("{\"term\": {\"name\": \"?0\"}}")
+    List<DoctorElasticsearch> searchByNameExact(String name);
 }
