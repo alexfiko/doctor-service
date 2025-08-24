@@ -13,7 +13,7 @@ spring:
     allow-bean-definition-overriding: true
   flyway:
     enabled: false
-    
+
   jackson:
     default-property-inclusion: non-null
     serialization:
@@ -39,7 +39,7 @@ info:
 eureka:
   client:
     service-url:
-      defaultZone: http://eureka-server:8761/eureka/
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://eureka-server:8761/eureka/}
     register-with-eureka: true
     fetch-registry: true
   instance:

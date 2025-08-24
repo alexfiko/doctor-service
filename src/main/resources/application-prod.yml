@@ -19,13 +19,19 @@ spring:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
-        format-sql: true
+        format-sql: false
         transaction:
           jta:
             platform: org.hibernate.engine.transaction.jta.platform.internal.NoJtaPlatform
+        logging:
+          level:
+            org.hibernate.SQL: ERROR
+            org.hibernate.type.descriptor.sql.BasicBinder: ERROR
+            org.hibernate.orm.connections.pooling: ERROR
+            org.hibernate.orm.deprecation: ERROR
   data:
     elasticsearch:
       uris: ${SPRING_DATA_ELASTICSEARCH_URIS:https://hospital-cluster-5303791460.us-east-1.bonsaisearch.net:443}
@@ -40,7 +46,9 @@ logging:
   level:
     com.hn.tgu.hospital: DEBUG
     org.springframework.web: INFO
-    org.hibernate: INFO
+    org.hibernate: WARN
+    org.hibernate.orm.connections.pooling: ERROR
+    org.hibernate.orm.deprecation: ERROR
     com.netflix.eureka: DEBUG
     com.netflix.discovery: DEBUG
     org.springframework.data.elasticsearch: DEBUG
