@@ -231,11 +231,11 @@ public class DoctorSearchRepository {
             
             // Filtros específicos usando filter context (no afectan score)
             if (specialty != null && !specialty.trim().isEmpty()) {
-                boolQuery.filter(QueryBuilders.matchQuery("specialty", specialty));
+                boolQuery.filter(QueryBuilders.termQuery("specialty", specialty));
             }
             
             if (hospital != null && !hospital.trim().isEmpty()) {
-                boolQuery.filter(QueryBuilders.matchQuery("hospital", hospital));
+                boolQuery.filter(QueryBuilders.termQuery("hospital", hospital));
             }
             
             // Filtro de disponibilidad
