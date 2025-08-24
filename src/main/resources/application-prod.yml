@@ -16,7 +16,7 @@ spring:
     type: com.zaxxer.hikari.HikariDataSource
 
   jpa:
-    open-in-view: false
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: update
     show-sql: true
