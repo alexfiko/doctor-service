@@ -86,4 +86,11 @@ public interface DoctorElasticsearchRepository extends ElasticsearchRepository<D
     
     @Query("{\"term\": {\"name\": \"?0\"}}")
     List<DoctorElasticsearch> searchByNameExact(String name);
+    
+    // Métodos manuales si los heredados no funcionan
+    @Query("{\"match_all\": {}}")
+    List<DoctorElasticsearch> findAllDoctors();
+    
+    @Query("{\"match_all\": {}}")
+    long countAllDoctors();
 }
