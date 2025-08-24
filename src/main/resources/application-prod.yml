@@ -16,7 +16,7 @@ spring:
     type: com.zaxxer.hikari.HikariDataSource
 
   jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
     hibernate:
       ddl-auto: update
     show-sql: true
@@ -34,6 +34,15 @@ spring:
       ssl:
         enabled: true
         verification-mode: none
+  eureka:
+    client:
+      service-url:
+        defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://eureka-server:8761/eureka/}
+      register-with-eureka: true
+      fetch-registry: true
+    instance:
+      prefer-ip-address: true
+      instance-id: ${spring.application.name}:${server.port}
 
   flyway:
     enabled: false
