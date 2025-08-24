@@ -859,8 +859,8 @@ public class DoctorElasticsearchService {
     private boolean checkIfDoctorExists(String doctorId) {
         try {
             // Usar el template para buscar por ID
-            Optional<DoctorElasticsearch> existing = elasticsearchTemplate.get(doctorId, DoctorElasticsearch.class);
-            return existing.isPresent();
+            DoctorElasticsearch existing = elasticsearchTemplate.get(doctorId, DoctorElasticsearch.class);
+            return existing != null;
         } catch (Exception e) {
             // Si hay error, asumir que no existe
             return false;
