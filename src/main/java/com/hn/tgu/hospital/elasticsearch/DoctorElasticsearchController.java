@@ -9,9 +9,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.ArrayList;
 
 @RestController
-@RequestMapping("/api/elasticsearch/doctors")
+@RequestMapping("/doctors/elasticsearch")
 @CrossOrigin(origins = "*")
 public class DoctorElasticsearchController {
     
@@ -526,6 +527,57 @@ public class DoctorElasticsearchController {
         } catch (Exception e) {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("error", "Error obteniendo niveles de experiencia: " + e.getMessage());
+            errorResponse.put("status", "error");
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
+    
+    /**
+     * Sincronizar todos los doctores de la base de datos con Elasticsearch
+     * POST /api/elasticsearch/doctors/sync-all
+     */
+    @PostMapping("/sync-all")
+    public ResponseEntity<Map<String, Object>> syncAllDoctors() {
+        try {
+            Map<String, Object> result = doctorElasticsearchService.syncAllFromDatabase();
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error sincronizando doctores: " + e.getMessage());
+            errorResponse.put("status", "error");
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
+    
+    /**
+     * Sincronizar un doctor específico por ID
+     * POST /api/elasticsearch/doctors/sync/{id}
+     */
+    @PostMapping("/sync/{id}")
+    public ResponseEntity<Map<String, Object>> syncDoctorById(@PathVariable String id) {
+        try {
+            Map<String, Object> result = doctorElasticsearchService.syncDoctorById(id);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error sincronizando doctor: " + e.getMessage());
+            errorResponse.put("status", "error");
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
+    
+    /**
+     * Verificar estado de sincronización
+     * GET /api/elasticsearch/doctors/sync-status
+     */
+    @GetMapping("/sync-status")
+    public ResponseEntity<Map<String, Object>> getSyncStatus() {
+        try {
+            Map<String, Object> result = doctorElasticsearchService.getSyncStatus();
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error obteniendo estado de sincronización: " + e.getMessage());
             errorResponse.put("status", "error");
             return ResponseEntity.internalServerError().body(errorResponse);
         }

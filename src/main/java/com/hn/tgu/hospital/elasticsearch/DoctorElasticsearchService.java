@@ -1,6 +1,7 @@
 package com.hn.tgu.hospital.elasticsearch;
 
 import com.hn.tgu.hospital.entity.Doctor;
+import com.hn.tgu.hospital.repository.DoctorRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -16,6 +17,9 @@ public class DoctorElasticsearchService {
     
     @Autowired
     private DoctorElasticsearchRepository doctorElasticsearchRepository;
+    
+    @Autowired
+    private DoctorRepository doctorRepository;
     
     /**
      * Búsqueda simple por texto
@@ -787,6 +791,159 @@ public class DoctorElasticsearchService {
                 ));
         } catch (Exception e) {
             return new HashMap<>();
+        }
+    }
+    
+    /**
+     * Sincronizar todos los doctores de la base de datos con Elasticsearch
+     */
+    public Map<String, Object> syncAllFromDatabase() {
+        try {
+            Map<String, Object> response = new HashMap<>();
+            
+            // Obtener todos los doctores de la base de datos
+            List<Doctor> doctorsFromDB = doctorRepository.findAll();
+            
+            if (doctorsFromDB.isEmpty()) {
+                response.put("message", "No hay doctores en la base de datos para sincronizar");
+                response.put("syncedCount", 0);
+                response.put("status", "warning");
+                return response;
+            }
+            
+            int syncedCount = 0;
+            List<String> syncedIds = new ArrayList<>();
+            List<String> errorIds = new ArrayList<>();
+            
+            for (Doctor doctor : doctorsFromDB) {
+                try {
+                    // Convertir y guardar en Elasticsearch
+                    DoctorElasticsearch doctorES = new DoctorElasticsearch(
+                        doctor.getId(), doctor.getName(), doctor.getSpecialty(), doctor.getImg(),
+                        doctor.getExperienceYears(), doctor.getRating(), doctor.getHospital(),
+                        doctor.isAvailable(), doctor.getDescription(), doctor.getTags(),
+                        doctor.getDiasLaborales(), doctor.getHorarioEntrada(), doctor.getHorarioSalida(),
+                        doctor.getDuracionCita(), doctor.getHorariosDisponibles()
+                    );
+                    
+                    // Guardar en Elasticsearch
+                    doctorElasticsearchRepository.save(doctorES);
+                    syncedCount++;
+                    syncedIds.add(doctor.getId());
+                    
+                    System.out.println("✅ Doctor sincronizado: " + doctor.getName() + " (ID: " + doctor.getId() + ")");
+                    
+                } catch (Exception e) {
+                    System.err.println("❌ Error sincronizando doctor " + doctor.getId() + ": " + e.getMessage());
+                    errorIds.add(doctor.getId());
+                }
+            }
+            
+            response.put("message", "Sincronización completada");
+            response.put("totalDoctors", doctorsFromDB.size());
+            response.put("syncedCount", syncedCount);
+            response.put("errorCount", errorIds.size());
+            response.put("syncedIds", syncedIds);
+            response.put("errorIds", errorIds);
+            response.put("timestamp", System.currentTimeMillis());
+            response.put("status", "success");
+            
+            System.out.println("🎉 Sincronización completada: " + syncedCount + "/" + doctorsFromDB.size() + " doctores");
+            return response;
+            
+        } catch (Exception e) {
+            System.err.println("❌ Error en sincronización masiva: " + e.getMessage());
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error en sincronización masiva: " + e.getMessage());
+            errorResponse.put("status", "error");
+            return errorResponse;
+        }
+    }
+    
+    /**
+     * Sincronizar un doctor específico por ID
+     */
+    public Map<String, Object> syncDoctorById(String id) {
+        try {
+            Map<String, Object> response = new HashMap<>();
+            
+            // Buscar doctor en la base de datos
+            Optional<Doctor> doctorOpt = doctorRepository.findById(id);
+            
+            if (doctorOpt.isEmpty()) {
+                response.put("message", "Doctor no encontrado en la base de datos");
+                response.put("status", "not_found");
+                return response;
+            }
+            
+            Doctor doctor = doctorOpt.get();
+            
+            // Convertir y guardar en Elasticsearch
+            DoctorElasticsearch doctorES = new DoctorElasticsearch(
+                doctor.getId(), doctor.getName(), doctor.getSpecialty(), doctor.getImg(),
+                doctor.getExperienceYears(), doctor.getRating(), doctor.getHospital(),
+                doctor.isAvailable(), doctor.getDescription(), doctor.getTags(),
+                doctor.getDiasLaborales(), doctor.getHorarioEntrada(), doctor.getHorarioSalida(),
+                doctor.getDuracionCita(), doctor.getHorariosDisponibles()
+            );
+            
+            // Guardar en Elasticsearch
+            DoctorElasticsearch saved = doctorElasticsearchRepository.save(doctorES);
+            
+            response.put("message", "Doctor sincronizado exitosamente");
+            response.put("doctor", saved);
+            response.put("timestamp", System.currentTimeMillis());
+            response.put("status", "success");
+            
+            System.out.println("✅ Doctor sincronizado: " + saved.getName());
+            return response;
+            
+        } catch (Exception e) {
+            System.err.println("❌ Error sincronizando doctor " + id + ": " + e.getMessage());
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error sincronizando doctor: " + e.getMessage());
+            errorResponse.put("status", "error");
+            return errorResponse;
+        }
+    }
+    
+    /**
+     * Verificar estado de sincronización
+     */
+    public Map<String, Object> getSyncStatus() {
+        try {
+            Map<String, Object> response = new HashMap<>();
+            
+            // Contar doctores en la base de datos
+            long dbCount = doctorRepository.count();
+            
+            // Contar doctores en Elasticsearch
+            long esCount = doctorElasticsearchRepository.count();
+            
+            // Calcular porcentaje de sincronización
+            double syncPercentage = dbCount > 0 ? (esCount * 100.0 / dbCount) : 0;
+            
+            response.put("databaseCount", dbCount);
+            response.put("elasticsearchCount", esCount);
+            response.put("syncPercentage", Math.round(syncPercentage * 100.0) / 100.0);
+            response.put("status", "success");
+            
+            if (syncPercentage == 100) {
+                response.put("message", "Sincronización completa");
+            } else if (syncPercentage > 0) {
+                response.put("message", "Sincronización parcial");
+            } else {
+                response.put("message", "Sin sincronización");
+            }
+            
+            return response;
+            
+        } catch (Exception e) {
+            System.err.println("❌ Error obteniendo estado de sincronización: " + e.getMessage());
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error obteniendo estado de sincronización: " + e.getMessage());
+            errorResponse.put("status", "error");
+            return errorResponse;
         }
     }
 }
