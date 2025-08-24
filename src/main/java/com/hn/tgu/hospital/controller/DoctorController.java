@@ -9,6 +9,7 @@ import com.hn.tgu.hospital.service.DoctorService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -34,6 +35,7 @@ public class DoctorController {
 
   // GET - Obtener todos los doctores
   @GetMapping("/list")
+  @Transactional(readOnly = true)
   public ResponseEntity<List<DoctorDTO>> getDoctores() {
     List<Doctor> doctores = doctorService.obtenerTodos();
     List<DoctorDTO> doctorDTOs = doctores.stream()
