@@ -520,4 +520,50 @@ public class DoctorElasticsearchController {
             return ResponseEntity.internalServerError().body(errorResponse);
         }
     }
+    
+    /**
+     * Endpoint de diagnóstico para identificar problemas
+     * GET /doctors/elasticsearch/debug
+     */
+    @GetMapping("/debug")
+    public ResponseEntity<Map<String, Object>> debugInfo() {
+        try {
+            Map<String, Object> debug = new HashMap<>();
+            
+            // Verificar si el servicio está inyectado
+            debug.put("serviceInjected", doctorElasticsearchService != null);
+            if (doctorElasticsearchService != null) {
+                debug.put("serviceClass", doctorElasticsearchService.getClass().getSimpleName());
+            }
+            
+            // Verificar conexión a la base de datos
+            try {
+                long dbCount = doctorElasticsearchService.getDatabaseCount();
+                debug.put("databaseConnection", "OK");
+                debug.put("databaseCount", dbCount);
+            } catch (Exception e) {
+                debug.put("databaseConnection", "ERROR: " + e.getMessage());
+            }
+            
+            // Verificar conexión a Elasticsearch
+            try {
+                long esCount = doctorElasticsearchService.getElasticsearchCount();
+                debug.put("elasticsearchConnection", "OK");
+                debug.put("elasticsearchCount", esCount);
+            } catch (Exception e) {
+                debug.put("elasticsearchConnection", "ERROR: " + e.getMessage());
+            }
+            
+            debug.put("timestamp", System.currentTimeMillis());
+            debug.put("status", "success");
+            
+            return ResponseEntity.ok(debug);
+            
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error en diagnóstico: " + e.getMessage());
+            errorResponse.put("status", "error");
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
 }

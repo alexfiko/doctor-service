@@ -919,4 +919,27 @@ public class DoctorElasticsearchService {
             return errorResponse;
         }
     }
+    
+    /**
+     * Obtener conteo de la base de datos para diagnóstico
+     */
+    public long getDatabaseCount() {
+        try {
+            return doctorRepository.count();
+        } catch (Exception e) {
+            throw new RuntimeException("Error contando en base de datos: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Obtener conteo de Elasticsearch para diagnóstico
+     */
+    public long getElasticsearchCount() {
+        try {
+            Query query = Query.findAll();
+            return elasticsearchTemplate.count(query, DoctorElasticsearch.class);
+        } catch (Exception e) {
+            throw new RuntimeException("Error contando en Elasticsearch: " + e.getMessage(), e);
+        }
+    }
 }
