@@ -1,194 +1,280 @@
-# Elasticsearch Facets Implementation - Doctor Service
+# 🏥 Elasticsearch Facets y Búsqueda Full-Text por Hospital
 
-## 🎯 Resumen de la Solución
+## 🎯 **Funcionalidades Implementadas**
 
-Se ha implementado una solución completa de **facets con Spring Data Elasticsearch** siguiendo el patrón del [repositorio de ejemplo](https://github.com/UnirCs/back-end-facets/blob/master/). Esta implementación resuelve el warning de Spring Data y proporciona capacidades avanzadas de búsqueda con agregaciones.
+### **1. Búsqueda Full-Text por Hospital**
+- **Búsqueda inteligente** en el campo `hospital`
+- **Búsqueda parcial** (contiene texto)
+- **Búsqueda fuzzy** (tolerante a errores de escritura)
+- **Búsqueda con wildcards** (patrones como `san*`)
 
-## 🏗️ Arquitectura de la Solución
+### **2. Facets por Nivel de Experiencia**
+- **Principiante:** 0-2 años de experiencia
+- **Intermedio:** 3-5 años de experiencia  
+- **Experto:** 6-10 años de experiencia
+- **Senior:** 10+ años de experiencia
 
-### 1. **Separación de Responsabilidades**
-- **`Doctor` (JPA)**: Entidad para persistencia en base de datos
-- **`DoctorElasticsearch`**: Entidad para búsquedas en Elasticsearch
-- **`DoctorRepository`**: Repositorio JPA para operaciones CRUD
-- **`DoctorElasticsearchRepository`**: Repositorio Spring Data Elasticsearch para facets
+## 🚀 **Endpoints Disponibles**
 
-### 2. **Componentes Implementados**
+### **Búsqueda por Hospital con Facets**
+```http
+GET /api/elasticsearch/doctors/hospital/{hospital}/facets?page=0&size=10
+```
 
-#### Entidad Elasticsearch (`DoctorElasticsearch.java`)
+**Ejemplo:**
+```http
+GET /api/elasticsearch/doctors/hospital/San José/facets?page=0&size=5
+```
+
+**Respuesta:**
+```json
+{
+  "doctors": [...],
+  "totalElements": 15,
+  "totalPages": 3,
+  "currentPage": 0,
+  "pageSize": 5,
+  "facets": {
+    "experienceLevel": {
+      "Principiante": 3,
+      "Intermedio": 5,
+      "Experto": 4,
+      "Senior": 3
+    },
+    "specialty": {
+      "Cardiología": 6,
+      "Neurología": 4,
+      "Pediatría": 5
+    }
+  },
+  "searchQuery": "San José"
+}
+```
+
+### **Búsqueda por Hospital y Nivel de Experiencia**
+```http
+GET /api/elasticsearch/doctors/hospital/{hospital}/experience/{level}
+```
+
+**Ejemplos:**
+```http
+GET /api/elasticsearch/doctors/hospital/San José/experience/Experto
+GET /api/elasticsearch/doctors/hospital/Clínica Central/experience/Senior
+```
+
+### **Búsqueda Fuzzy por Hospital**
+```http
+GET /api/elasticsearch/doctors/hospital/{hospital}/fuzzy
+```
+
+**Ejemplo:**
+```http
+GET /api/elasticsearch/doctors/hospital/san jose/fuzzy
+```
+**Encuentra:** "San José", "San Jose", "san jose", etc.
+
+### **Búsqueda con Wildcards**
+```http
+GET /api/elasticsearch/doctors/hospital/{hospital}/wildcard
+```
+
+**Ejemplos:**
+```http
+GET /api/elasticsearch/doctors/hospital/san*/wildcard
+GET /api/elasticsearch/doctors/hospital/*central*/wildcard
+```
+
+### **Búsqueda Avanzada con Múltiples Criterios**
+```http
+GET /api/elasticsearch/doctors/advanced?hospital=San José&specialty=Cardiología&experienceLevel=Experto&available=true&page=0&size=10
+```
+
+**Parámetros:**
+- `hospital`: Nombre del hospital (opcional)
+- `specialty`: Especialidad médica (opcional)
+- `experienceLevel`: Nivel de experiencia (opcional)
+- `available`: Disponibilidad (opcional, default: false)
+- `page`: Página (opcional, default: 0)
+- `size`: Tamaño de página (opcional, default: 10)
+
+### **Niveles de Experiencia Disponibles**
+```http
+GET /api/elasticsearch/doctors/experience-levels
+```
+
+**Respuesta:**
+```json
+{
+  "levels": ["Principiante", "Intermedio", "Experto", "Senior"],
+  "description": {
+    "Principiante": "0-2 años de experiencia",
+    "Intermedio": "3-5 años de experiencia",
+    "Experto": "6-10 años de experiencia",
+    "Senior": "10+ años de experiencia"
+  }
+}
+```
+
+## 🔍 **Casos de Uso**
+
+### **1. Búsqueda de Doctores por Hospital**
+```bash
+# Encontrar todos los doctores del Hospital San José
+curl "http://localhost:8081/api/elasticsearch/doctors/hospital/San José/facets"
+
+# Con paginación
+curl "http://localhost:8081/api/elasticsearch/doctors/hospital/San José/facets?page=0&size=5"
+```
+
+### **2. Filtrar por Experiencia**
+```bash
+# Solo doctores expertos del Hospital San José
+curl "http://localhost:8081/api/elasticsearch/doctors/hospital/San José/experience/Experto"
+
+# Solo doctores senior disponibles
+curl "http://localhost:8081/api/elasticsearch/doctors/advanced?experienceLevel=Senior&available=true"
+```
+
+### **3. Búsqueda Tolerante a Errores**
+```bash
+# Encuentra "San José" aunque escribas "san jose"
+curl "http://localhost:8081/api/elasticsearch/doctors/hospital/san jose/fuzzy"
+
+# Encuentra hospitales que empiecen con "San"
+curl "http://localhost:8081/api/elasticsearch/doctors/hospital/san*/wildcard"
+```
+
+### **4. Búsqueda Combinada**
+```bash
+# Doctores de Cardiología en Hospital San José con experiencia intermedia
+curl "http://localhost:8081/api/elasticsearch/doctors/advanced?hospital=San José&specialty=Cardiología&experienceLevel=Intermedio"
+```
+
+## 🏗️ **Arquitectura Técnica**
+
+### **Entidad Elasticsearch**
 ```java
 @Document(indexName = "doctores")
-@Setting(settingPath = "elasticsearch-settings.json")
 public class DoctorElasticsearch {
-    @Field(type = FieldType.Keyword)  // Para facets
-    private String specialty;
+    // Campo hospital con múltiples tipos
+    @Field(type = FieldType.Text, analyzer = "standard")
+    private String hospital;
     
-    @Field(type = FieldType.Text, analyzer = "standard")  // Para búsqueda de texto
+    @Field(type = FieldType.Keyword)
+    private String hospitalKeyword;
+    
+    // Campo para facets de experiencia
+    @Field(type = FieldType.Keyword)
+    private String experienceLevel;
+    
+    // Campo de búsqueda completa
+    @Field(type = FieldType.Text, analyzer = "standard")
     private String searchText;
 }
 ```
 
-#### Repositorio Spring Data (`DoctorElasticsearchRepository.java`)
+### **Repositorio con Métodos Avanzados**
 ```java
-@Repository
 public interface DoctorElasticsearchRepository extends ElasticsearchRepository<DoctorElasticsearch, String> {
-    // Métodos automáticos de Spring Data
-    List<DoctorElasticsearch> findBySpecialty(String specialty);
+    // Búsqueda por hospital (full-text)
+    List<DoctorElasticsearch> findByHospitalContaining(String hospital);
     
-    // Queries personalizadas con @Query
-    @Query("{\"multi_match\": {\"query\": \"?0\", \"fields\": [\"name^3\", \"specialty^2.5\"]}}")
-    Page<DoctorElasticsearch> searchByText(String query, Pageable pageable);
+    // Búsqueda por nivel de experiencia
+    List<DoctorElasticsearch> findByExperienceLevel(String experienceLevel);
+    
+    // Query personalizada para facets
+    @Query("{\"bool\": {\"must\": [{\"match\": {\"hospital\": \"?0\"}}], \"filter\": [{\"term\": {\"experienceLevel\": \"?1\"}}]}}")
+    List<DoctorElasticsearch> searchByHospitalAndExperienceLevel(String hospital, String experienceLevel);
 }
 ```
 
-#### Servicio de Facets (`DoctorElasticsearchService.java`)
+### **Servicio con Lógica de Facets**
 ```java
 @Service
 public class DoctorElasticsearchService {
-    public Map<String, Object> searchWithFacets(String query, String specialty, ...) {
-        // Implementa agregaciones para facets
-        addFacets(sourceBuilder);
-        // Procesa resultados con facets
-        return processFacets(response);
+    public Map<String, Object> searchByHospitalWithFacets(String hospital, int page, int size) {
+        // Búsqueda principal
+        Page<DoctorElasticsearch> results = repository.findByHospitalContaining(hospital, pageable);
+        
+        // Obtener facets
+        Map<String, Long> experienceFacets = getExperienceFacets(hospital);
+        Map<String, Long> specialtyFacets = getSpecialtyFacets(hospital);
+        
+        // Construir respuesta con facets
+        return buildResponseWithFacets(results, experienceFacets, specialtyFacets);
     }
 }
 ```
 
-## 🚀 Endpoints Disponibles
+## 📊 **Ventajas de esta Implementación**
 
-### Búsqueda con Facets
-```
-GET /api/elasticsearch/doctors/search-with-facets
-```
+### **1. Búsqueda Inteligente**
+- ✅ **Full-text search** en hospital
+- ✅ **Fuzzy matching** para errores de escritura
+- ✅ **Wildcard search** para patrones
+- ✅ **Búsqueda parcial** y exacta
 
-**Parámetros:**
-- `query`: Texto de búsqueda libre
-- `specialty`: Filtro por especialidad
-- `hospital`: Filtro por hospital
-- `minExperience`, `maxExperience`: Rango de experiencia
-- `minRating`, `maxRating`: Rango de rating
-- `available`: Disponibilidad
-- `tags`: Lista de tags
-- `page`, `size`: Paginación
+### **2. Facets Dinámicos**
+- ✅ **Agrupación automática** por experiencia
+- ✅ **Conteo en tiempo real** de resultados
+- ✅ **Filtros interactivos** para el usuario
+- ✅ **Navegación por facetas**
 
-**Respuesta con Facets:**
-```json
-{
-  "doctors": [...],
-  "totalHits": 150,
-  "facets": {
-    "specialties": [
-      {"value": "Cardiología", "count": 25},
-      {"value": "Neurología", "count": 18}
-    ],
-    "hospitals": [
-      {"value": "Hospital Central", "count": 45},
-      {"value": "Clínica Norte", "count": 32}
-    ],
-    "avgRating": 4.2,
-    "avgExperience": 12.5
-  }
-}
-```
+### **3. Rendimiento**
+- ✅ **Indexación optimizada** con campos múltiples
+- ✅ **Queries eficientes** con filtros
+- ✅ **Paginación** para grandes volúmenes
+- ✅ **Caché automático** de Elasticsearch
 
-### Otros Endpoints
-- `GET /api/elasticsearch/doctors/specialties` - Todas las especialidades
-- `GET /api/elasticsearch/doctors/hospitals` - Todos los hospitales
-- `GET /api/elasticsearch/doctors/tags` - Todos los tags
-- `POST /api/elasticsearch/doctors/sync` - Sincronizar desde JPA
+### **4. Flexibilidad**
+- ✅ **Múltiples criterios** de búsqueda
+- ✅ **Combinación de filtros** y facets
+- ✅ **Parámetros opcionales** para búsquedas
+- ✅ **Respuestas estructuradas** con metadatos
 
-## 🔧 Configuración
+## 🧪 **Pruebas Recomendadas**
 
-### 1. **Archivo de Configuración** (`elasticsearch-settings.json`)
-```json
-{
-  "analysis": {
-    "analyzer": {
-      "standard": {"type": "standard"},
-      "spanish": {"type": "spanish"}
-    }
-  },
-  "index": {
-    "number_of_shards": 1,
-    "number_of_replicas": 0
-  }
-}
-```
-
-### 2. **Anotaciones en Entidad**
-- `@Document`: Define el índice de Elasticsearch
-- `@Field(type = FieldType.Keyword)`: Para campos de facet (agregaciones)
-- `@Field(type = FieldType.Text)`: Para búsqueda de texto completo
-
-## 📊 Tipos de Facets Implementados
-
-### 1. **Facets de Términos**
-- **Especialidades**: Conteo de doctores por especialidad
-- **Hospitales**: Conteo de doctores por hospital
-- **Tags**: Conteo de doctores por tag
-- **Días Laborales**: Conteo por día de trabajo
-
-### 2. **Facets de Rango**
-- **Experiencia**: Rangos 0-5, 6-10, 11-15, 16-20, 21+ años
-- **Rating**: Rangos 1-2, 2-3, 3-4, 4-5 estrellas
-
-### 3. **Facets de Métricas**
-- **Rating Promedio**: Promedio de rating de todos los doctores
-- **Experiencia Promedio**: Promedio de años de experiencia
-
-## 🔄 Sincronización JPA ↔ Elasticsearch
-
-```java
-// Sincronizar un doctor desde JPA
-@PostMapping("/sync")
-public ResponseEntity<DoctorElasticsearch> syncDoctor(@RequestBody Doctor doctor) {
-    DoctorElasticsearch doctorES = doctorElasticsearchService.syncFromJPA(doctor);
-    return ResponseEntity.ok(doctorES);
-}
-```
-
-## ✅ Beneficios de la Nueva Implementación
-
-1. **Resuelve el Warning**: Spring Data ahora identifica correctamente los repositorios
-2. **Facets Nativos**: Implementación nativa de Elasticsearch con agregaciones
-3. **Separación Clara**: JPA para persistencia, Elasticsearch para búsqueda
-4. **Performance**: Búsquedas optimizadas con índices apropiados
-5. **Escalabilidad**: Fácil agregar nuevos tipos de facets
-
-## 🧪 Testing
-
-### Probar Búsqueda con Facets
+### **1. Búsqueda Básica**
 ```bash
-curl "http://localhost:8081/api/elasticsearch/doctors/search-with-facets?query=cardio&page=0&size=10"
+# Probar endpoint de sync primero
+curl "http://localhost:8081/api/elasticsearch/doctors/sync"
+
+# Luego probar búsqueda por hospital
+curl "http://localhost:8081/api/elasticsearch/doctors/hospital/San José/facets"
 ```
 
-### Probar Facets Individuales
+### **2. Facets de Experiencia**
 ```bash
-curl "http://localhost:8081/api/elasticsearch/doctors/specialties"
-curl "http://localhost:8081/api/elasticsearch/doctors/hospitals"
+# Ver niveles disponibles
+curl "http://localhost:8081/api/elasticsearch/doctors/experience-levels"
+
+# Filtrar por nivel específico
+curl "http://localhost:8081/api/elasticsearch/doctors/hospital/San José/experience/Experto"
 ```
 
-## 🚨 Solución al Warning Original
-
-**Antes (Problemático):**
+### **3. Búsqueda Avanzada**
+```bash
+# Múltiples criterios
+curl "http://localhost:8081/api/elasticsearch/doctors/advanced?hospital=San José&specialty=Cardiología&available=true"
 ```
-Spring Data Elasticsearch - Could not safely identify store assignment for repository candidate interface com.hn.tgu.hospital.repository.DoctorRepository
-```
 
-**Después (Resuelto):**
-- `DoctorRepository` extiende `JpaRepository` → Para JPA
-- `DoctorElasticsearchRepository` extiende `ElasticsearchRepository` → Para Elasticsearch
-- Spring Data identifica correctamente cada repositorio
+## 🚀 **Próximos Pasos**
 
-## 📚 Referencias
+### **1. Datos de Prueba**
+- Crear doctores con diferentes hospitales
+- Variar años de experiencia para probar facets
+- Agregar especialidades diversas
 
-- [Repositorio de Ejemplo](https://github.com/UnirCs/back-end-facets/blob/master/)
-- [Spring Data Elasticsearch Documentation](https://docs.spring.io/spring-data/elasticsearch/docs/current/reference/html/)
-- [Elasticsearch Aggregations](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations.html)
+### **2. Frontend Integration**
+- Implementar filtros por facets
+- Mostrar conteos de cada categoría
+- Permitir selección múltiple de filtros
 
-## 🔮 Próximos Pasos
+### **3. Optimizaciones**
+- Agregar más campos para facets
+- Implementar búsqueda geoespacial por ubicación
+- Agregar sugerencias de autocompletado
 
-1. **Migrar datos existentes** a la nueva estructura
-2. **Implementar facets en frontend** para filtros dinámicos
-3. **Agregar más tipos de agregaciones** según necesidades
-4. **Optimizar índices** para mejor performance
-5. **Implementar cache** para facets frecuentes
+---
+
+**🎉 ¡Elasticsearch está configurado con búsqueda full-text por hospital y facets por experiencia!**

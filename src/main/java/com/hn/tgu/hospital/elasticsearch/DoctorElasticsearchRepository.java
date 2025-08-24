@@ -10,86 +10,62 @@ import java.util.List;
 
 @Repository
 public interface DoctorElasticsearchRepository extends ElasticsearchRepository<DoctorElasticsearch, String> {
+
+    // Búsqueda básica por texto
+    List<DoctorElasticsearch> findBySearchTextContaining(String searchText);
     
-    // Búsquedas básicas
-    List<DoctorElasticsearch> findByNameContainingIgnoreCase(String name);
+    // Búsqueda por especialidad
     List<DoctorElasticsearch> findBySpecialty(String specialty);
-    List<DoctorElasticsearch> findByHospital(String hospital);
+    
+    // Búsqueda por hospital (exacta)
+    List<DoctorElasticsearch> findByHospitalKeyword(String hospital);
+    
+    // Búsqueda por hospital (full-text)
+    List<DoctorElasticsearch> findByHospitalContaining(String hospital);
+    
+    // Búsqueda por nivel de experiencia
+    List<DoctorElasticsearch> findByExperienceLevel(String experienceLevel);
+    
+    // Búsqueda por disponibilidad
     List<DoctorElasticsearch> findByAvailable(boolean available);
-    List<DoctorElasticsearch> findByTagsIn(List<String> tags);
     
-    // Búsquedas con rangos
+    // Búsqueda por rango de años de experiencia
     List<DoctorElasticsearch> findByExperienceYearsBetween(int minYears, int maxYears);
-    List<DoctorElasticsearch> findByRatingBetween(double minRating, double maxRating);
     
-    // Búsquedas combinadas
-    List<DoctorElasticsearch> findBySpecialtyAndAvailable(String specialty, boolean available);
-    List<DoctorElasticsearch> findByHospitalAndAvailable(String hospital, boolean available);
+    // Búsqueda por rating mínimo
+    List<DoctorElasticsearch> findByRatingGreaterThanEqual(double minRating);
     
-    // Búsqueda por texto completo
-    @Query("{\"multi_match\": {\"query\": \"?0\", \"fields\": [\"name^3\", \"specialty^2.5\", \"description^1.5\", \"searchText^1\"], \"type\": \"best_fields\", \"tie_breaker\": 0.3}}")
-    Page<DoctorElasticsearch> searchByText(String query, Pageable pageable);
+    // Búsqueda combinada: hospital + especialidad
+    List<DoctorElasticsearch> findByHospitalContainingAndSpecialty(String hospital, String specialty);
     
-    // Búsqueda avanzada con facets
-    @Query("{\"bool\": {\"must\": [{\"multi_match\": {\"query\": \"?0\", \"fields\": [\"name^3\", \"specialty^2.5\", \"description^1.5\"]}}], \"filter\": [{\"term\": {\"specialty\": \"?1\"}}, {\"term\": {\"hospital\": \"?2\"}}, {\"range\": {\"experienceYears\": {\"gte\": ?3, \"lte\": ?4}}}, {\"range\": {\"rating\": {\"gte\": ?5, \"lte\": ?6}}}, {\"term\": {\"available\": ?7}}]}}")
-    Page<DoctorElasticsearch> searchAdvanced(String query, String specialty, String hospital, 
-                                           int minExperience, int maxExperience, 
-                                           double minRating, double maxRating, 
-                                           boolean available, Pageable pageable);
+    // Búsqueda combinada: hospital + nivel de experiencia
+    List<DoctorElasticsearch> findByHospitalContainingAndExperienceLevel(String hospital, String experienceLevel);
     
-    // Búsqueda por especialidad con ordenamiento
-    List<DoctorElasticsearch> findBySpecialtyOrderByRatingDesc(String specialty);
+    // Búsqueda paginada por texto
+    Page<DoctorElasticsearch> findBySearchTextContaining(String searchText, Pageable pageable);
     
-    // Búsqueda por hospital con ordenamiento
-    List<DoctorElasticsearch> findByHospitalOrderByRatingDesc(String hospital);
+    // Búsqueda paginada por hospital
+    Page<DoctorElasticsearch> findByHospitalContaining(String hospital, Pageable pageable);
     
-    // Búsqueda por tags con ordenamiento
-    List<DoctorElasticsearch> findByTagsInOrderByRatingDesc(List<String> tags);
+    // Búsqueda paginada por especialidad
+    Page<DoctorElasticsearch> findBySpecialty(String specialty, Pageable pageable);
     
-    // Búsqueda por disponibilidad con ordenamiento
-    List<DoctorElasticsearch> findByAvailableOrderByRatingDesc(boolean available);
+    // Búsqueda paginada por nivel de experiencia
+    Page<DoctorElasticsearch> findByExperienceLevel(String experienceLevel, Pageable pageable);
     
-    // Búsqueda por experiencia con ordenamiento
-    List<DoctorElasticsearch> findByExperienceYearsBetweenOrderByRatingDesc(int minYears, int maxYears);
+    // Query personalizada para búsqueda full-text avanzada
+    @Query("{\"bool\": {\"should\": [{\"match\": {\"hospital\": \"?0\"}}, {\"match\": {\"searchText\": \"?0\"}}], \"minimum_should_match\": 1}}")
+    List<DoctorElasticsearch> searchByHospitalFullText(String query);
     
-    // Búsqueda por rating con ordenamiento
-    List<DoctorElasticsearch> findByRatingBetweenOrderByRatingDesc(double minRating, double maxRating);
+    // Query personalizada para facets de experiencia
+    @Query("{\"bool\": {\"must\": [{\"match\": {\"hospital\": \"?0\"}}], \"filter\": [{\"term\": {\"experienceLevel\": \"?1\"}}]}}")
+    List<DoctorElasticsearch> searchByHospitalAndExperienceLevel(String hospital, String experienceLevel);
     
-    // Búsqueda por nombre que empiece con (autocompletado)
-    List<DoctorElasticsearch> findByNameStartingWithIgnoreCaseOrderByRatingDesc(String name);
+    // Query personalizada para búsqueda fuzzy por hospital
+    @Query("{\"fuzzy\": {\"hospital\": {\"value\": \"?0\", \"fuzziness\": \"AUTO\"}}}")
+    List<DoctorElasticsearch> searchByHospitalFuzzy(String hospital);
     
-    // Búsqueda por nombre que contenga (búsqueda parcial)
-    List<DoctorElasticsearch> findByNameContainingIgnoreCaseOrderByRatingDesc(String name);
-    
-    // Búsqueda por descripción
-    List<DoctorElasticsearch> findByDescriptionContainingIgnoreCase(String description);
-    
-    // Búsqueda por días laborales
-    List<DoctorElasticsearch> findByDiasLaboralesIn(List<String> diasLaborales);
-    
-    // Búsqueda por horario de entrada
-    List<DoctorElasticsearch> findByHorarioEntrada(String horarioEntrada);
-    
-    // Búsqueda por horario de salida
-    List<DoctorElasticsearch> findByHorarioSalida(String horarioSalida);
-    
-    // Búsqueda por duración de cita
-    List<DoctorElasticsearch> findByDuracionCita(int duracionCita);
-    
-    // Búsqueda por duración de cita con rango
-    List<DoctorElasticsearch> findByDuracionCitaBetween(int minDuracion, int maxDuracion);
-    
-    // Búsqueda por múltiples especialidades
-    List<DoctorElasticsearch> findBySpecialtyIn(List<String> specialties);
-    
-    // Búsqueda por múltiples hospitales
-    List<DoctorElasticsearch> findByHospitalIn(List<String> hospitals);
-    
-    // Búsqueda por múltiples criterios con ordenamiento
-    List<DoctorElasticsearch> findBySpecialtyInAndHospitalInAndAvailableOrderByRatingDesc(
-        List<String> specialties, List<String> hospitals, boolean available);
-    
-    // Búsqueda por texto en múltiples campos con boosting
-    @Query("{\"dis_max\": {\"queries\": [{\"match\": {\"name\": {\"query\": \"?0\", \"boost\": 3}}}, {\"match\": {\"specialty\": {\"query\": \"?0\", \"boost\": 2.5}}}, {\"match\": {\"description\": {\"query\": \"?0\", \"boost\": 1.5}}}, {\"match\": {\"searchText\": {\"query\": \"?0\", \"boost\": 1}}}], \"tie_breaker\": 0.3}}")
-    Page<DoctorElasticsearch> searchWithBoosting(String query, Pageable pageable);
+    // Query personalizada para búsqueda con wildcards
+    @Query("{\"wildcard\": {\"hospital\": {\"value\": \"*?0*\"}}}")
+    List<DoctorElasticsearch> searchByHospitalWildcard(String hospital);
 }

@@ -303,4 +303,122 @@ public class DoctorElasticsearchController {
             return ResponseEntity.internalServerError().build();
         }
     }
+    
+    /**
+     * Búsqueda por hospital con facets de experiencia
+     * GET /api/elasticsearch/doctors/hospital/{hospital}/facets?page=0&size=10
+     * Ejemplo: /api/elasticsearch/doctors/hospital/San José/facets
+     */
+    @GetMapping("/hospital/{hospital}/facets")
+    public ResponseEntity<Map<String, Object>> searchByHospitalWithFacets(
+            @PathVariable String hospital,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        try {
+            Map<String, Object> results = doctorElasticsearchService.searchByHospitalWithFacets(hospital, page, size);
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error en búsqueda por hospital con facets: " + e.getMessage());
+            errorResponse.put("status", "error");
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
+    
+    /**
+     * Búsqueda por hospital y nivel de experiencia específico
+     * GET /api/elasticsearch/doctors/hospital/{hospital}/experience/{level}
+     * Ejemplo: /api/elasticsearch/doctors/hospital/San José/experience/Experto
+     */
+    @GetMapping("/hospital/{hospital}/experience/{level}")
+    public ResponseEntity<List<DoctorElasticsearch>> searchByHospitalAndExperienceLevel(
+            @PathVariable String hospital,
+            @PathVariable String level) {
+        try {
+            List<DoctorElasticsearch> results = doctorElasticsearchService.searchByHospitalAndExperienceLevel(hospital, level);
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    /**
+     * Búsqueda fuzzy por hospital (tolerante a errores)
+     * GET /api/elasticsearch/doctors/hospital/{hospital}/fuzzy
+     * Ejemplo: /api/elasticsearch/doctors/hospital/san jose/fuzzy
+     */
+    @GetMapping("/hospital/{hospital}/fuzzy")
+    public ResponseEntity<List<DoctorElasticsearch>> searchByHospitalFuzzy(
+            @PathVariable String hospital) {
+        try {
+            List<DoctorElasticsearch> results = doctorElasticsearchService.searchByHospitalFuzzy(hospital);
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    /**
+     * Búsqueda con wildcards por hospital
+     * GET /api/elasticsearch/doctors/hospital/{hospital}/wildcard
+     * Ejemplo: /api/elasticsearch/doctors/hospital/sanwildcard
+     */
+    @GetMapping("/hospital/{hospital}/wildcard")
+    public ResponseEntity<List<DoctorElasticsearch>> searchByHospitalWildcard(
+            @PathVariable String hospital) {
+        try {
+            List<DoctorElasticsearch> results = doctorElasticsearchService.searchByHospitalWildcard(hospital);
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    /**
+     * Búsqueda avanzada con múltiples criterios y facets
+     * GET /api/elasticsearch/doctors/advanced?hospital=San José&specialty=Cardiología&experienceLevel=Experto&available=true&page=0&size=10
+     */
+    @GetMapping("/advanced")
+    public ResponseEntity<Map<String, Object>> advancedSearchWithFacets(
+            @RequestParam(required = false) String hospital,
+            @RequestParam(required = false) String specialty,
+            @RequestParam(required = false) String experienceLevel,
+            @RequestParam(defaultValue = "false") boolean available,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        try {
+            Map<String, Object> results = doctorElasticsearchService.advancedSearchWithFacets(
+                hospital, specialty, experienceLevel, available, page, size);
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error en búsqueda avanzada: " + e.getMessage());
+            errorResponse.put("status", "error");
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
+    
+    /**
+     * Obtener todos los niveles de experiencia disponibles
+     * GET /api/elasticsearch/doctors/experience-levels
+     */
+    @GetMapping("/experience-levels")
+    public ResponseEntity<Map<String, Object>> getExperienceLevels() {
+        try {
+            Map<String, Object> response = new HashMap<>();
+            response.put("levels", List.of("Principiante", "Intermedio", "Experto", "Senior"));
+            response.put("description", Map.of(
+                "Principiante", "0-2 años de experiencia",
+                "Intermedio", "3-5 años de experiencia",
+                "Experto", "6-10 años de experiencia",
+                "Senior", "10+ años de experiencia"
+            ));
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error obteniendo niveles de experiencia: " + e.getMessage());
+            errorResponse.put("status", "error");
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
 }

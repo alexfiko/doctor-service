@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class DoctorElasticsearchService {
@@ -254,6 +255,198 @@ public class DoctorElasticsearchService {
             return doctorElasticsearchRepository.findByRatingBetween(minRating, maxRating);
         } catch (Exception e) {
             return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Búsqueda full-text por hospital con facets de experiencia
+     * Ejemplo de uso: hospital = "San José" retorna doctores con facets por nivel
+     */
+    public Map<String, Object> searchByHospitalWithFacets(String hospital, int page, int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            
+            // Búsqueda principal por hospital
+            Page<DoctorElasticsearch> results = doctorElasticsearchRepository.findByHospitalContaining(hospital, pageable);
+            
+            // Obtener facets por nivel de experiencia
+            Map<String, Long> experienceFacets = getExperienceFacets(hospital);
+            
+            // Obtener facets por especialidad
+            Map<String, Long> specialtyFacets = getSpecialtyFacets(hospital);
+            
+            // Construir respuesta
+            Map<String, Object> response = new HashMap<>();
+            response.put("doctors", results.getContent());
+            response.put("totalElements", results.getTotalElements());
+            response.put("totalPages", results.getTotalPages());
+            response.put("currentPage", page);
+            response.put("pageSize", size);
+            response.put("facets", Map.of(
+                "experienceLevel", experienceFacets,
+                "specialty", specialtyFacets
+            ));
+            response.put("searchQuery", hospital);
+            
+            return response;
+            
+        } catch (Exception e) {
+            throw new RuntimeException("Error en búsqueda por hospital con facets: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Búsqueda por hospital y nivel de experiencia específico
+     * Ejemplo: hospital = "San José", experienceLevel = "Experto"
+     */
+    public List<DoctorElasticsearch> searchByHospitalAndExperienceLevel(String hospital, String experienceLevel) {
+        try {
+            return doctorElasticsearchRepository.searchByHospitalAndExperienceLevel(hospital, experienceLevel);
+        } catch (Exception e) {
+            throw new RuntimeException("Error en búsqueda por hospital y experiencia: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Búsqueda fuzzy por hospital (tolerante a errores de escritura)
+     * Ejemplo: "san jose" encuentra "San José", "San Jose", etc.
+     */
+    public List<DoctorElasticsearch> searchByHospitalFuzzy(String hospital) {
+        try {
+            return doctorElasticsearchRepository.searchByHospitalFuzzy(hospital);
+        } catch (Exception e) {
+            throw new RuntimeException("Error en búsqueda fuzzy por hospital: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Búsqueda con wildcards por hospital
+     * Ejemplo: "san*" encuentra "San José", "San Francisco", etc.
+     */
+    public List<DoctorElasticsearch> searchByHospitalWildcard(String hospital) {
+        try {
+            return doctorElasticsearchRepository.searchByHospitalWildcard(hospital);
+        } catch (Exception e) {
+            throw new RuntimeException("Error en búsqueda wildcard por hospital: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Obtener facets de nivel de experiencia para un hospital específico
+     */
+    private Map<String, Long> getExperienceFacets(String hospital) {
+        try {
+            List<DoctorElasticsearch> doctors = doctorElasticsearchRepository.findByHospitalContaining(hospital);
+            
+            return doctors.stream()
+                .collect(Collectors.groupingBy(
+                    DoctorElasticsearch::getExperienceLevel,
+                    Collectors.counting()
+                ));
+        } catch (Exception e) {
+            return new HashMap<>();
+        }
+    }
+    
+    /**
+     * Obtener facets de especialidad para un hospital específico
+     */
+    private Map<String, Long> getSpecialtyFacets(String hospital) {
+        try {
+            List<DoctorElasticsearch> doctors = doctorElasticsearchRepository.findByHospitalContaining(hospital);
+            
+            return doctors.stream()
+                .collect(Collectors.groupingBy(
+                    DoctorElasticsearch::getSpecialty,
+                    Collectors.counting()
+                ));
+        } catch (Exception e) {
+            return new HashMap<>();
+        }
+    }
+    
+    /**
+     * Búsqueda avanzada con múltiples criterios y facets
+     */
+    public Map<String, Object> advancedSearchWithFacets(String hospital, String specialty, 
+                                                       String experienceLevel, boolean available, 
+                                                       int page, int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            List<DoctorElasticsearch> results = new ArrayList<>();
+            
+            // Aplicar filtros
+            if (hospital != null && !hospital.isEmpty()) {
+                if (results.isEmpty()) {
+                    results = doctorElasticsearchRepository.findByHospitalContaining(hospital);
+                } else {
+                    results = results.stream()
+                        .filter(d -> d.getHospital().toLowerCase().contains(hospital.toLowerCase()))
+                        .collect(Collectors.toList());
+                }
+            }
+            
+            if (specialty != null && !specialty.isEmpty()) {
+                if (results.isEmpty()) {
+                    results = doctorElasticsearchRepository.findBySpecialty(specialty);
+                } else {
+                    results = results.stream()
+                        .filter(d -> d.getSpecialty().equals(specialty))
+                        .collect(Collectors.toList());
+                }
+            }
+            
+            if (experienceLevel != null && !experienceLevel.isEmpty()) {
+                if (results.isEmpty()) {
+                    results = doctorElasticsearchRepository.findByExperienceLevel(experienceLevel);
+                } else {
+                    results = results.stream()
+                        .filter(d -> d.getExperienceLevel().equals(experienceLevel))
+                        .collect(Collectors.toList());
+                }
+            }
+            
+            if (available) {
+                if (results.isEmpty()) {
+                    results = doctorElasticsearchRepository.findByAvailable(true);
+                } else {
+                    results = results.stream()
+                        .filter(DoctorElasticsearch::isAvailable)
+                        .collect(Collectors.toList());
+                }
+            }
+            
+            // Aplicar paginación
+            int start = page * size;
+            int end = Math.min(start + size, results.size());
+            List<DoctorElasticsearch> paginatedResults = results.subList(start, end);
+            
+            // Obtener facets
+            Map<String, Long> experienceFacets = getExperienceFacets(hospital != null ? hospital : "");
+            Map<String, Long> specialtyFacets = getSpecialtyFacets(hospital != null ? hospital : "");
+            
+            // Construir respuesta
+            Map<String, Object> response = new HashMap<>();
+            response.put("doctors", paginatedResults);
+            response.put("totalElements", results.size());
+            response.put("totalPages", (int) Math.ceil((double) results.size() / size));
+            response.put("currentPage", page);
+            response.put("pageSize", size);
+            response.put("facets", Map.of(
+                "experienceLevel", experienceFacets,
+                "specialty", specialtyFacets
+            ));
+            response.put("filters", Map.of(
+                "hospital", hospital,
+                "specialty", specialty,
+                "experienceLevel", experienceLevel,
+                "available", available
+            ));
+            
+            return response;
+            
+        } catch (Exception e) {
+            throw new RuntimeException("Error en búsqueda avanzada con facets: " + e.getMessage(), e);
         }
     }
 }

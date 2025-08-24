@@ -31,8 +31,12 @@ public class DoctorElasticsearch {
     @Field(type = FieldType.Double)
     private double rating;
     
-    @Field(type = FieldType.Keyword)
+    // Campo hospital con múltiples tipos para búsqueda avanzada
+    @Field(type = FieldType.Text, analyzer = "standard", searchAnalyzer = "standard")
     private String hospital;
+    
+    @Field(type = FieldType.Keyword)
+    private String hospitalKeyword;
     
     @Field(type = FieldType.Boolean)
     private boolean available;
@@ -62,6 +66,10 @@ public class DoctorElasticsearch {
     @Field(type = FieldType.Text, analyzer = "standard")
     private String searchText;
     
+    // Campo para facets de experiencia
+    @Field(type = FieldType.Keyword)
+    private String experienceLevel;
+    
     // Constructores
     public DoctorElasticsearch() {}
     
@@ -76,6 +84,7 @@ public class DoctorElasticsearch {
         this.experienceYears = experienceYears;
         this.rating = rating;
         this.hospital = hospital;
+        this.hospitalKeyword = hospital; // Para facets exactos
         this.available = available;
         this.description = description;
         this.tags = tags;
@@ -84,7 +93,21 @@ public class DoctorElasticsearch {
         this.horarioSalida = horarioSalida;
         this.duracionCita = duracionCita;
         this.horariosDisponibles = horariosDisponibles;
-        this.searchText = name + " " + specialty + " " + description;
+        this.searchText = name + " " + specialty + " " + description + " " + hospital;
+        this.experienceLevel = calculateExperienceLevel(experienceYears);
+    }
+    
+    // Método para calcular el nivel de experiencia
+    private String calculateExperienceLevel(int years) {
+        if (years <= 2) return "Principiante";
+        else if (years <= 5) return "Intermedio";
+        else if (years <= 10) return "Experto";
+        else return "Senior";
+    }
+    
+    // Método para actualizar searchText
+    private void updateSearchText() {
+        this.searchText = name + " " + specialty + " " + description + " " + hospital;
     }
     
     // Getters y Setters
@@ -128,6 +151,7 @@ public class DoctorElasticsearch {
     
     public void setExperienceYears(int experienceYears) {
         this.experienceYears = experienceYears;
+        this.experienceLevel = calculateExperienceLevel(experienceYears);
     }
     
     public double getRating() {
@@ -144,6 +168,16 @@ public class DoctorElasticsearch {
     
     public void setHospital(String hospital) {
         this.hospital = hospital;
+        this.hospitalKeyword = hospital;
+        updateSearchText();
+    }
+    
+    public String getHospitalKeyword() {
+        return hospitalKeyword;
+    }
+    
+    public void setHospitalKeyword(String hospitalKeyword) {
+        this.hospitalKeyword = hospitalKeyword;
     }
     
     public boolean isAvailable() {
@@ -219,8 +253,12 @@ public class DoctorElasticsearch {
         this.searchText = searchText;
     }
     
-    private void updateSearchText() {
-        this.searchText = name + " " + specialty + " " + description;
+    public String getExperienceLevel() {
+        return experienceLevel;
+    }
+    
+    public void setExperienceLevel(String experienceLevel) {
+        this.experienceLevel = experienceLevel;
     }
     
     // Método builder para crear instancias fácilmente
@@ -322,9 +360,10 @@ public class DoctorElasticsearch {
         }
         
         public DoctorElasticsearch build() {
-            return new DoctorElasticsearch(id, name, specialty, img, experienceYears, rating, hospital, 
-                                         available, description, tags, diasLaborales, horarioEntrada, 
-                                         horarioSalida, duracionCita, horariosDisponibles);
+            return new DoctorElasticsearch(id, name, specialty, img, experienceYears, 
+                                          rating, hospital, available, description, 
+                                          tags, diasLaborales, horarioEntrada, 
+                                          horarioSalida, duracionCita, horariosDisponibles);
         }
     }
 }
