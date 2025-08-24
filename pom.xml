@@ -88,6 +88,12 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-elasticsearch</artifactId>
+			<exclusions>
+				<exclusion>
+					<groupId>co.elastic.clients</groupId>
+					<artifactId>elasticsearch-java</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>org.elasticsearch.client</groupId>
@@ -97,6 +103,11 @@
 		<dependency>
 			<groupId>org.elasticsearch.client</groupId>
 			<artifactId>elasticsearch-rest-client</artifactId>
+			<version>7.10.2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.elasticsearch</groupId>
+			<artifactId>elasticsearch</artifactId>
 			<version>7.10.2</version>
 		</dependency>
 
