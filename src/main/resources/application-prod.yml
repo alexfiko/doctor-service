@@ -65,9 +65,9 @@ logging:
     org.hibernate.orm.deprecation: ERROR
     com.netflix.eureka: WARN
     com.netflix.discovery: WARN
-    org.springframework.data.elasticsearch: WARN
-    org.elasticsearch: WARN
-    co.elastic.clients: WARN
+    org.springframework.data.elasticsearch: DEBUG
+    org.elasticsearch: DEBUG
+    co.elastic.clients: DEBUG
     org.springframework.boot.autoconfigure: WARN
     org.springframework.context: WARN
     org.springframework.boot: WARN
