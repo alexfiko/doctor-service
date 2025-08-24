@@ -294,7 +294,6 @@ public class DoctorElasticsearchService {
     /**
      * Sincronizar entidad JPA con Elasticsearch
      * Este método es ESSENCIAL para crear índices y sincronizar datos
-     * NOTA: Temporalmente sin save() hasta resolver dependencias
      */
     public DoctorElasticsearch syncFromJPA(Doctor doctor) {
         try {
@@ -316,11 +315,12 @@ public class DoctorElasticsearchService {
                 doctor.getHorariosDisponibles()
             );
             
-            // TODO: Implementar save cuando esté disponible
-            // Por ahora solo retornamos el objeto creado
-            System.out.println("Doctor sincronizado (sin guardar): " + doctorES.getName());
-            return doctorES;
+            // GUARDAR en Elasticsearch
+            DoctorElasticsearch savedDoctor = doctorElasticsearchRepository.save(doctorES);
+            System.out.println("✅ Doctor sincronizado y guardado en Elasticsearch: " + savedDoctor.getName());
+            return savedDoctor;
         } catch (Exception e) {
+            System.err.println("❌ Error guardando en Elasticsearch: " + e.getMessage());
             throw new RuntimeException("Error sincronizando doctor con Elasticsearch: " + e.getMessage(), e);
         }
     }
