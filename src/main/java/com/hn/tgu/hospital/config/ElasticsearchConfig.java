@@ -1,23 +1,10 @@
 package com.hn.tgu.hospital.config;
 
-import org.elasticsearch.client.RestHighLevelClient;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.elasticsearch.repository.config.EnableElasticsearchRepositories;
 
 @Configuration
-public class ElasticsearchConfig implements CommandLineRunner {
-
-    @Autowired(required = false)
-    private RestHighLevelClient elasticsearchClient;
-
-    @Override
-    public void run(String... args) throws Exception {
-        // Este método se ejecuta después de que todos los beans estén inicializados
-        if (elasticsearchClient != null) {
-            System.out.println("🔍 Elasticsearch configurado correctamente");
-        } else {
-            System.err.println("❌ Elasticsearch no disponible - verificar configuración");
-        }
-    }
+@EnableElasticsearchRepositories(basePackages = "com.hn.tgu.hospital.elasticsearch")
+public class ElasticsearchConfig {
+    // Configuración mínima para habilitar repositorios Elasticsearch
 }

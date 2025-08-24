@@ -222,4 +222,109 @@ public class DoctorElasticsearch {
     private void updateSearchText() {
         this.searchText = name + " " + specialty + " " + description;
     }
+    
+    // Método builder para crear instancias fácilmente
+    public static DoctorElasticsearchBuilder builder() {
+        return new DoctorElasticsearchBuilder();
+    }
+    
+    // Clase builder interna
+    public static class DoctorElasticsearchBuilder {
+        private String id;
+        private String name;
+        private String specialty;
+        private String img;
+        private int experienceYears;
+        private double rating;
+        private String hospital;
+        private boolean available;
+        private String description;
+        private List<String> tags;
+        private List<String> diasLaborales;
+        private String horarioEntrada;
+        private String horarioSalida;
+        private int duracionCita;
+        private Map<String, List<String>> horariosDisponibles;
+        
+        public DoctorElasticsearchBuilder id(String id) {
+            this.id = id;
+            return this;
+        }
+        
+        public DoctorElasticsearchBuilder name(String name) {
+            this.name = name;
+            return this;
+        }
+        
+        public DoctorElasticsearchBuilder specialty(String specialty) {
+            this.specialty = specialty;
+            return this;
+        }
+        
+        public DoctorElasticsearchBuilder img(String img) {
+            this.img = img;
+            return this;
+        }
+        
+        public DoctorElasticsearchBuilder experienceYears(int experienceYears) {
+            this.experienceYears = experienceYears;
+            return this;
+        }
+        
+        public DoctorElasticsearchBuilder rating(double rating) {
+            this.rating = rating;
+            return this;
+        }
+        
+        public DoctorElasticsearchBuilder hospital(String hospital) {
+            this.hospital = hospital;
+            return this;
+        }
+        
+        public DoctorElasticsearchBuilder available(boolean available) {
+            this.available = available;
+            return this;
+        }
+        
+        public DoctorElasticsearchBuilder description(String description) {
+            this.description = description;
+            return this;
+        }
+        
+        public DoctorElasticsearchBuilder tags(List<String> tags) {
+            this.tags = tags;
+            return this;
+        }
+        
+        public DoctorElasticsearchBuilder diasLaborales(List<String> diasLaborales) {
+            this.diasLaborales = diasLaborales;
+            return this;
+        }
+        
+        public DoctorElasticsearchBuilder horarioEntrada(String horarioEntrada) {
+            this.horarioEntrada = horarioEntrada;
+            return this;
+        }
+        
+        public DoctorElasticsearchBuilder horarioSalida(String horarioSalida) {
+            this.horarioSalida = horarioSalida;
+            return this;
+        }
+        
+        public DoctorElasticsearchBuilder duracionCita(int duracionCita) {
+            this.duracionCita = duracionCita;
+            return this;
+        }
+        
+        public DoctorElasticsearchBuilder horariosDisponibles(Map<String, List<String>> horariosDisponibles) {
+            this.horariosDisponibles = horariosDisponibles;
+            return this;
+        }
+        
+        public DoctorElasticsearch build() {
+            return new DoctorElasticsearch(id, name, specialty, img, experienceYears, rating, hospital, 
+                                         available, description, tags, diasLaborales, horarioEntrada, 
+                                         horarioSalida, duracionCita, horariosDisponibles);
+        }
+    }
 }

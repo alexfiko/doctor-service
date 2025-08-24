@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Arrays;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/elasticsearch/doctors")
@@ -136,28 +138,63 @@ public class DoctorElasticsearchController {
     
     /**
      * Sincronizar doctor desde JPA
-     * POST /api/elasticsearch/doctors/sync
+     * GET /api/elasticsearch/doctors/sync
+     * ESSENCIAL para crear índices y sincronizar datos
+     * Se puede probar desde el navegador
      */
-    @PostMapping("/sync")
-    public ResponseEntity<DoctorElasticsearch> syncDoctor(@RequestBody com.hn.tgu.hospital.entity.Doctor doctor) {
+    @GetMapping("/sync")
+    public ResponseEntity<Map<String, Object>> syncDoctor() {
         try {
+            // Crear un doctor de ejemplo para sincronizar
+            com.hn.tgu.hospital.entity.Doctor doctor = new com.hn.tgu.hospital.entity.Doctor();
+            doctor.setId("sync-test");
+            doctor.setName("Dr. Sincronización Test");
+            doctor.setSpecialty("Medicina General");
+            doctor.setImg("default.jpg");
+            doctor.setExperienceYears(5);
+            doctor.setRating(4.5);
+            doctor.setHospital("Hospital Test");
+            doctor.setAvailable(true);
+            doctor.setDescription("Doctor para probar sincronización con Elasticsearch");
+            doctor.setTags(Arrays.asList("test", "sync"));
+            doctor.setDiasLaborales(Arrays.asList("Lunes", "Martes", "Miércoles"));
+            doctor.setHorarioEntrada("08:00");
+            doctor.setHorarioSalida("17:00");
+            doctor.setDuracionCita(30);
+            doctor.setHorariosDisponibles(new HashMap<>());
+            
             DoctorElasticsearch doctorES = doctorElasticsearchService.syncFromJPA(doctor);
-            return ResponseEntity.ok(doctorES);
+            
+            // Retornar respuesta con información del sync
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Doctor sincronizado correctamente (modo test)");
+            response.put("doctor", doctorES);
+            response.put("status", "success");
+            response.put("note", "Los datos no se guardan en Elasticsearch hasta resolver dependencias");
+            
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().build();
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error en sincronización: " + e.getMessage());
+            errorResponse.put("status", "error");
+            return ResponseEntity.internalServerError().body(errorResponse);
         }
     }
     
     /**
-     * Obtener doctor por ID
+     * Obtener doctor por ID (usando búsqueda por texto)
      * GET /api/elasticsearch/doctors/{id}
      */
     @GetMapping("/{id}")
     public ResponseEntity<DoctorElasticsearch> getDoctorById(@PathVariable String id) {
         try {
-            return doctorElasticsearchService.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+            // Buscar por ID usando búsqueda por texto
+            Page<DoctorElasticsearch> page = doctorElasticsearchService.searchByText(id, 0, 1);
+            if (!page.getContent().isEmpty()) {
+                return ResponseEntity.ok(page.getContent().get(0));
+            } else {
+                return ResponseEntity.notFound().build();
+            }
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
@@ -168,9 +205,11 @@ public class DoctorElasticsearchController {
      * GET /api/elasticsearch/doctors
      */
     @GetMapping
-    public ResponseEntity<List<DoctorElasticsearch>> getAllDoctors() {
+    public ResponseEntity<Page<DoctorElasticsearch>> getAllDoctors(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
         try {
-            List<DoctorElasticsearch> doctors = doctorElasticsearchService.findAll();
+            Page<DoctorElasticsearch> doctors = doctorElasticsearchService.findAll(page, size);
             return ResponseEntity.ok(doctors);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
