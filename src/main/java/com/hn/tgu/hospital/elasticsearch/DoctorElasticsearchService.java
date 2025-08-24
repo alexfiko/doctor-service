@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 
 @Service
 public class DoctorElasticsearchService {
@@ -20,6 +21,9 @@ public class DoctorElasticsearchService {
     
     @Autowired
     private DoctorRepository doctorRepository;
+    
+    @Autowired
+    private ElasticsearchOperations elasticsearchTemplate;
     
     /**
      * Búsqueda simple por texto
