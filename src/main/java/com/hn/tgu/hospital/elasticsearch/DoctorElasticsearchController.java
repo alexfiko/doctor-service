@@ -13,7 +13,6 @@ import java.util.ArrayList;
 
 @RestController
 @RequestMapping("/doctors/elasticsearch")
-@CrossOrigin(origins = "*")
 public class DoctorElasticsearchController {
     
     @Autowired
