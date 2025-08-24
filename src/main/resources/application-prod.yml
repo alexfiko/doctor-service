@@ -34,16 +34,6 @@ spring:
       ssl:
         enabled: true
         verification-mode: none
-      # Configuración específica para Elasticsearch 7.x
-      cluster-name: elasticsearch
-      index:
-        number-of-shards: 1
-        number-of-replicas: 0
-      search:
-        default-timeout: ${SPRING_DATA_ELASTICSEARCH_SEARCH_DEFAULT_TIMEOUT:30s}
-        max-timeout: ${SPRING_DATA_ELASTICSEARCH_SEARCH_MAX_TIMEOUT:60s}
-      headers:
-        X-Elastic-Product: ${SPRING_DATA_ELASTICSEARCH_HEADERS_X_ELASTIC_PRODUCT:Elasticsearch}
 
   flyway:
     enabled: false

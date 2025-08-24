@@ -19,8 +19,8 @@
 	<description>doctor-service</description>
 	<properties>
 		<java.version>17</java.version>
-		<spring-cloud.version>2024.0.1</spring-cloud.version>
-		<elasticsearch.version>7.17.3</elasticsearch.version>
+		<spring-cloud.version>2023.0.0</spring-cloud.version>
+		<elasticsearch.version>7.10.2</elasticsearch.version>
 	</properties>
 	<!-- 🎯 Importar BOM para manejar versiones de dependencias Spring Cloud -->
 	<dependencyManagement>
@@ -92,12 +92,12 @@
 		<dependency>
 			<groupId>org.elasticsearch.client</groupId>
 			<artifactId>elasticsearch-rest-high-level-client</artifactId>
-			<version>7.17.3</version>
+			<version>7.10.2</version>
 		</dependency>
 		<dependency>
 			<groupId>org.elasticsearch.client</groupId>
 			<artifactId>elasticsearch-rest-client</artifactId>
-			<version>7.17.3</version>
+			<version>7.10.2</version>
 		</dependency>
 
 		<dependency>
