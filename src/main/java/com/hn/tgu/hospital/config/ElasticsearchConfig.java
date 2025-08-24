@@ -27,24 +27,48 @@ public class ElasticsearchConfig extends AbstractElasticsearchConfiguration {
     @Override
     @Bean
     public RestHighLevelClient elasticsearchClient() {
-        String host = elasticsearchUri.replace("http://", "").replace("https://", "");
-        String[] hostParts = host.split(":");
-        
-        ClientConfiguration.MaybeSecureClientConfigurationBuilder builder = ClientConfiguration.builder()
-                .connectedTo(hostParts[0] + ":" + hostParts[1]);
-        
-        // Configurar autenticación si hay credenciales
-        if (username != null && !username.isEmpty() && password != null && !password.isEmpty()) {
-            builder.withBasicAuth(username, password);
+        try {
+            // Extraer solo el host y puerto de la URI
+            String cleanUri = elasticsearchUri;
+            if (cleanUri.contains("@")) {
+                // Si tiene credenciales en la URI, extraer solo la parte del host
+                cleanUri = cleanUri.substring(cleanUri.indexOf("@") + 1);
+            }
+            
+            // Remover protocolo
+            cleanUri = cleanUri.replace("http://", "").replace("https://", "");
+            
+            // Separar host y puerto
+            String host;
+            int port;
+            if (cleanUri.contains(":")) {
+                String[] parts = cleanUri.split(":");
+                host = parts[0];
+                port = Integer.parseInt(parts[1]);
+            } else {
+                host = cleanUri;
+                port = 9200; // Puerto por defecto
+            }
+            
+            ClientConfiguration.MaybeSecureClientConfigurationBuilder builder = ClientConfiguration.builder()
+                    .connectedTo(host + ":" + port);
+            
+            // Configurar autenticación usando las propiedades separadas
+            if (username != null && !username.isEmpty() && password != null && !password.isEmpty()) {
+                builder.withBasicAuth(username, password);
+            }
+            
+            // Configurar SSL si es HTTPS
+            if (elasticsearchUri.startsWith("https://")) {
+                builder.usingSsl();
+            }
+            
+            ClientConfiguration clientConfiguration = builder.build();
+            return RestClients.create(clientConfiguration).rest();
+            
+        } catch (Exception e) {
+            throw new RuntimeException("Error configurando cliente Elasticsearch: " + e.getMessage(), e);
         }
-        
-        // Configurar SSL si es HTTPS
-        if (elasticsearchUri.startsWith("https://")) {
-            builder.usingSsl();
-        }
-        
-        ClientConfiguration clientConfiguration = builder.build();
-        return RestClients.create(clientConfiguration).rest();
     }
 
     @Bean
